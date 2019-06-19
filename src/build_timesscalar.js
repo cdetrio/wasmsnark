@@ -18,12 +18,28 @@
 */
 
 module.exports = function buildTimesScalar(module, fnName, elementLen, opAB, opAA, fPrefix) {
+    // fPrefix: g1
+    // opAB: prefix + "_add",
+    // opAA: prefix + "_double",
+    // fnName: prefix + "_timesScalar",
+    // elementLen: n8*3,
+
+    /*
+    // bn128.pg1 = bn128.g1_allocPoint([bigInt(1), bigInt(2), bigInt(1)]);
+
+    const p1 = bn128.g1_allocPoint(refBn128.g1);
+    bn128.g1_toMontgomery(p1, p1);
+
+    const s = bn128.allocInt(55);
+    bn128.g1_timesScalar(p1, s, 32, p1);
+    */
 
     const f = module.addFunction(fnName);
-    f.addParam("base", "i32");
-    f.addParam("scalar", "i32");
-    f.addParam("scalarLength", "i32");
-    f.addParam("r", "i32");
+    f.addParam("base", "i32"); // p1.  what is p1? [1n, 2n, 1n]
+    f.addParam("scalar", "i32"); // s  55
+    f.addParam("scalarLength", "i32"); // 32
+    f.addParam("r", "i32"); // result ??
+
     f.addLocal("i", "i32");
     f.addLocal("b", "i32");
 
