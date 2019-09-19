@@ -204,6 +204,7 @@ async function build() {
         env: {
             "memory": bn128.memory,
             "printMemHex": function(offset, len) {
+                /*
                 console.log("printMemHex ", offset, " ", len);
 
                 for (let i = ( offset + len ) - 1; i >= offset; i--) {
@@ -211,6 +212,7 @@ async function build() {
                 }
 
                 console.log()
+                */
             }
         }
     });

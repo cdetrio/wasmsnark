@@ -373,24 +373,45 @@ describe("Basic tests for g1 in bn128", () => {
         const pPreQ = pb.alloc(32*2*3 + 32*2*3*103);
 
         pb.bn128_prepareG1(pG1s, pPreP);
+        console.log("G1s is: ");
+        for (let i = 0; i < 3; i++) {
+            console.log(pb.get(pG1s + i * 32));
+        }
+        
+        console.log("G2 is: ");
+        for (let i = 0; i < 6; i++) {
+            console.log(pb.get(pG2gen + i * 32));
+        }
         pb.bn128_prepareG2(pG2gen, pPreQ);
+ 
+        console.log("coefficients are: ");
+        for (let i = 0; i < 104 * 6; i++) {
+            console.log(pb.get(pPreQ + i * 32));
+        }
+ 
         pb.bn128_millerLoop(pPreP, pPreQ, pRes1);
+        console.log("miller loop result is: ");
+        for (let i = 0; i < 104 * 6; i++) {
+            console.log(pb.get(pRes1 + i * 32));
+        }
         pb.bn128_finalExponentiation(pRes1, pRes2);
 
         pb.bn128_prepareG1(pG1gen, pPreP);
         pb.bn128_prepareG2(pG2s, pPreQ);
 
-        console.log("G2 is: ");
-        for (let i = 0; i < 6; i++) {
-            console.log(pb.get(pG2s + i * 32));
-        }
 
+
+
+
+        /*
         console.log("coefficients are: ");
         for (let i = 0; i < 104 * 6; i++) {
             console.log(pb.get(pPreQ + i * 32));
         }
+        */
 
         pb.bn128_millerLoop(pPreP, pPreQ, pRes3);
+
         pb.bn128_finalExponentiation(pRes3, pRes4);
 
         const res2 = getFieldElementF12(pRes2);
