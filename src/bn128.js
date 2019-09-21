@@ -196,7 +196,9 @@ async function build() {
     });
     */
 
-    data = fs.readFileSync("bn128-debug.wasm")
+    //data = fs.readFileSync("bn128-debug.wasm")
+    //data = fs.readFileSync("bn128.wasm")
+    data = fs.readFileSync("build/bn128_trynewbuild.wasm")
     const wasmModule = await WebAssembly.compile(data);
 
 
@@ -515,6 +517,14 @@ class Bn128 {
         this.setF1(p + SIZEF1, e[1]);
     }
 
+    /*
+    setF3(p, e) {
+        this.setF1(p, e.a);
+        this.setF1(p + SIZEF1, e.b);
+        this.setF1(p + 2*SIZEF1, e.c);
+    }
+    */
+
     setF6(p, e) {
         this.setF2(p, e[0]);
         this.setF2(p+2*SIZEF1, e[1]);
@@ -537,6 +547,14 @@ class Bn128 {
         this.setF2(p + SIZEF1*2, e[1]);
         this.setF2(p + SIZEF1*4, [1, 0]);
     }
+
+    /*
+    setG2Affine(p, e) {
+        this.setF3(p, e.x);
+        this.setF3(p + SIZEF1*3, e.y);
+        this.setF3(p + SIZEF1*6, {a: 1, b:0, c:0});
+    }
+    */
 
     getF1(p) {
         this.instance.exports.f1m_fromMontgomery(p, p);
@@ -763,13 +781,15 @@ class Bn128 {
         const pBeta2 = this.alloc(SIZEF1*6);
 
         // 1.- start the all precompute G2
-        this.setG1Affine(pA, proof.pi_a);
+        //this.setG1Affine(pA, proof.pi_a);
+        this.setG1(pA, proof.pi_a);
         this.instance.exports.g1m_toMontgomery(pA, pA);
 
         this.setG2Affine(pB, proof.pi_b);
         this.instance.exports.g2m_toMontgomery(pB, pB);
 
-        this.setG1Affine(pC, proof.pi_c);
+        //this.setG1Affine(pC, proof.pi_c);
+        this.setG1(pC, proof.pi_c);
         this.instance.exports.g1m_toMontgomery(pC, pC);
 
         this.setG2Affine(pDelta2, verificationKey.vk_delta_2);
@@ -781,16 +801,19 @@ class Bn128 {
         this.setF12(pAlfaBeta, verificationKey.vk_alfabeta_12);
         this.instance.exports.ftm_toMontgomery(pAlfaBeta, pAlfaBeta);
 
-        this.setG1Affine(pAlfa1, verificationKey.vk_alfa_1);
+        //this.setG1Affine(pAlfa1, verificationKey.vk_alfa_1);
+        this.setG1(pAlfa1, verificationKey.vk_alfa_1);
         this.instance.exports.g1m_toMontgomery(pAlfa1, pAlfa1);
 
         this.setG2Affine(pBeta2, verificationKey.vk_beta_2);
         this.instance.exports.g2m_toMontgomery(pBeta2, pBeta2);
 
-        this.setG1Affine(pIC, verificationKey.IC[0]);
+        //this.setG1Affine(pIC, verificationKey.IC[0]);
+        this.setG1(pIC, verificationKey.IC[0]);
         this.instance.exports.g1m_toMontgomery(pIC, pIC);
         for (let i=0; i<input.length; i++) {
-            this.setG1Affine(pICaux, verificationKey.IC[i+1]);
+            //this.setG1Affine(pICaux, verificationKey.IC[i+1]);
+            this.setG1(pICaux, verificationKey.IC[i+1]);
             this.instance.exports.g1m_toMontgomery(pICaux, pICaux);
 
             this.setF1(pICr, input[i]);
@@ -804,8 +827,65 @@ class Bn128 {
         this.instance.exports.g1m_neg(pIC, pIC);
         this.instance.exports.g1m_neg(pC, pC);
         this.instance.exports.g1m_neg(pAlfa1, pAlfa1);
-        const valid = this.instance.exports.bn128_pairingEq4(pA, pB, pIC, pGamma2, pC, pDelta2, pAlfa1, pBeta2, this.pOneT);
+        //const valid = this.instance.exports.bn128_pairingEq4(pA, pB, pIC, pGamma2, pC, pDelta2, pAlfa1, pBeta2, this.pOneT);
 //        const valid = this.instance.exports.bn128_pairingEq3(pA, pB, pIC, pGamma2, pC, pDelta2, pAlfaBeta);
+
+        /*
+        const valid = this.instance.exports.bn128_pairingEq3(pA, pB, pIC, pGamma2, pC, pDelta2, pAlfaBeta);
+        console.log('groth16Verify valid:', valid)
+        */
+
+
+        const p_ab_res = this.alloc(SIZEF1*12);
+        this.instance.exports.bn128_pairing(pA, pB, p_ab_res);
+
+        this.instance.exports.ftm_fromMontgomery(p_ab_res, p_ab_res);
+
+        console.log("p_ab_res: ");
+        for (let i = 0; i < 12; i++) {
+           console.log(buf2hex(this.getBin(p_ab_res + i * 32, SIZEF1)));
+        }
+
+        const cpub_vk_gamma_2_res = this.alloc(SIZEF1*12);
+        this.instance.exports.bn128_pairing(pIC, pGamma2, cpub_vk_gamma_2_res);
+
+        this.instance.exports.ftm_fromMontgomery(cpub_vk_gamma_2_res, cpub_vk_gamma_2_res);
+
+        console.log("cpub_vk_gamma_2_res: ");
+        for (let i = 0; i < 12; i++) {
+           console.log(buf2hex(this.getBin(cpub_vk_gamma_2_res + i * 32, SIZEF1)));
+        }
+
+        const pi_c_vk_delta_2_res = this.alloc(SIZEF1*12);
+        this.instance.exports.bn128_pairing(pC, pDelta2, pi_c_vk_delta_2_res);
+
+        const cpub_pic_mul_res = this.alloc(SIZEF1*12);
+        this.instance.exports.ftm_mul(cpub_vk_gamma_2_res, pi_c_vk_delta_2_res, cpub_pic_mul_res);
+        /*
+        console.log("cpub_pic_mul_res: ");
+        for (let i = 0; i < 12; i++) {
+           console.log(buf2hex(this.getBin(cpub_pic_mul_res + i * 32, SIZEF1)));
+        }
+        */
+
+        const cpubpic_vkalfabeta12_mul_res = this.alloc(SIZEF1*12);
+        this.instance.exports.ftm_mul(pAlfaBeta, cpub_pic_mul_res, cpubpic_vkalfabeta12_mul_res);
+        /*
+        console.log("cpubpic_vkalfabeta12_mul_res: ");
+        for (let i = 0; i < 12; i++) {
+           console.log(buf2hex(this.getBin(cpubpic_vkalfabeta12_mul_res + i * 32, SIZEF1)));
+        }
+        */
+
+
+        //const pairings_eq = this.alloc(SIZEF1);
+        let pairings_eq = this.instance.exports.ftm_eq(p_ab_res, cpubpic_vkalfabeta12_mul_res);
+        console.log('pairings_eq:', pairings_eq)
+
+        const valid = pairings_eq;
+
+        //const valid = this.instance.exports.bn128_pairingEq3(pA, pB, pIC, pGamma2, pC, pDelta2, pAlfaBeta);
+        //console.log('valid:', valid)
 
         this.i32[0] = oldAlloc;
         return (valid==1);

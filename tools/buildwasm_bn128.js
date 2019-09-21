@@ -13,6 +13,11 @@ function buildWasm() {
     const code = moduleBuilder.build();
 
     fs.writeFileSync(
+        path.join( __dirname, "..", "build", "bn128_trynewbuild.wasm"),
+        code
+    );
+
+    fs.writeFileSync(
         path.join( __dirname, "..", "build", "bn128_wasm.js"),
         `
             exports.code = Buffer.from("${Buffer.from(code).toString("base64")}", "base64");

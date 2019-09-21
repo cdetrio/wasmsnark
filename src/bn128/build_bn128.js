@@ -277,6 +277,7 @@ module.exports = function buildBN128(module, _prefix) {
         f.addCode(
             //TODO REMOVE THIS AND REGENERATE
             c.call(g1mPrefix + "_affine", c.getLocal("pP"), c.getLocal("ppreP")),  // TODO Remove if already in affine
+            //c.call(g1mPrefix + "_copy", c.getLocal("pP"), c.getLocal("ppreP")), // if point is already affine?
         );
     }
 
@@ -532,6 +533,7 @@ module.exports = function buildBN128(module, _prefix) {
 
         f.addCode(
             c.call(g2mPrefix + "_affine", QX, cQX),
+            //c.call(g2mPrefix + "_copy", QX, cQX), // if point is already affine?
             c.call(f2mPrefix + "_copy", cQX, RX),
             c.call(f2mPrefix + "_copy", cQY, RY),
             c.call(f2mPrefix + "_one", RZ),
