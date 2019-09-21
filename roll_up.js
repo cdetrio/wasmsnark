@@ -283,14 +283,15 @@ buildBn128().then( (bn128) => {
         }
 
 
-        /*
-        let pAux = bn128.alloc(SIZE_F * 12);
 
-        bn128.instance.exports.bn128_pairingEq2(pProofA, pVKA, pNegAP, pP2, pAux);
+        let pFq12One = bn128.alloc(SIZE_F * 12);
+        bn128.instance.exports.ftm_one(pFq12One);
 
-        console.log("pairing result is: ");
-        printFq12(bn128, pAux);
-        */
+        const pairingEq2_result = bn128.instance.exports.bn128_pairingEq2(pProofA, pVKA, pProof_a_p_neg, pP2, pFq12One);
+
+        console.log("bn128_pairingEq2 result is:", pairingEq2_result);
+        //printFq12(bn128, pPairingEq2Res);
+
     }
     zk.verify();
 });
