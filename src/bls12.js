@@ -18,11 +18,11 @@
 */
 
 const bigInt = require("big-integer");
-const bn128_wasm = require("../build/bn128_wasm.js");
+const bls12_wasm = require("../build/bls12_wasm.js");
 const assert = require("assert");
 const utils = require("./utils");
 
-const SIZEF1 = 32;
+const SIZEF1 = 48;
 const inBrowser = (typeof window !== "undefined");
 let NodeWorker;
 let NodeCrypto;
@@ -172,39 +172,40 @@ function thread(self) {
 
 async function build() {
 
-    const bn128 = new Bn128();
+    const bls12 = new Bls12();
 
-    bn128.q = bigInt("21888242871839275222246405745257275088696311157297823662689037894645226208583");
-    bn128.r = bigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
-    bn128.n64 = Math.floor((bn128.q.minus(1).bitLength() - 1)/64) +1;
-    bn128.n32 = bn128.n64*2;
-    bn128.n8 = bn128.n64*8;
+    bls12.q = bigInt("4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
+    bls12.r = bigInt("52435875175126190479447740508185965837690552500527637822603658699938581184513");
+    bls12.n64 = Math.floor((bls12.q.minus(1).bitLength() - 1)/64) +1;
+    console.log('bls12.js n64:', bls12.n64);
+    bls12.n32 = bls12.n64*2;
+    bls12.n8 = bls12.n64*8;
 
-    bn128.memory = new WebAssembly.Memory({initial:5000});
-    bn128.i32 = new Uint32Array(bn128.memory.buffer);
+    bls12.memory = new WebAssembly.Memory({initial:5000});
+    bls12.i32 = new Uint32Array(bls12.memory.buffer);
 
-    const wasmModule = await WebAssembly.compile(bn128_wasm.code);
+    const wasmModule = await WebAssembly.compile(bls12_wasm.code);
 
-    bn128.instance = await WebAssembly.instantiate(wasmModule, {
+    bls12.instance = await WebAssembly.instantiate(wasmModule, {
         env: {
-            "memory": bn128.memory
+            "memory": bls12.memory
         }
     });
 
-    bn128.pq = bn128_wasm.pq;
-    bn128.pr = bn128_wasm.pr;
-    bn128.pG1gen = bn128_wasm.pG1gen;
-    bn128.pG1zero = bn128_wasm.pG1zero;
-    bn128.pG2gen = bn128_wasm.pG2gen;
-    bn128.pG2zero = bn128_wasm.pG2zero;
-    bn128.pOneT = bn128_wasm.pOneT;
+    bls12.pq = bls12_wasm.pq;
+    bls12.pr = bls12_wasm.pr;
+    bls12.pG1gen = bls12_wasm.pG1gen;
+    bls12.pG1zero = bls12_wasm.pG1zero;
+    bls12.pG2gen = bls12_wasm.pG2gen;
+    bls12.pG2zero = bls12_wasm.pG2zero;
+    bls12.pOneT = bls12_wasm.pOneT;
 
-    bn128.pr0 = bn128.alloc(192);
-    bn128.pr1 = bn128.alloc(192);
+    bls12.pr0 = bls12.alloc(192);
+    bls12.pr1 = bls12.alloc(192);
 
-    bn128.workers = [];
-    bn128.pendingDeferreds = [];
-    bn128.working = [];
+    bls12.workers = [];
+    bls12.pendingDeferreds = [];
+    bls12.working = [];
 
     let concurrency;
 
@@ -223,9 +224,9 @@ async function build() {
                 data = e;
             }
 
-            bn128.working[i]=false;
-            bn128.pendingDeferreds[i].resolve(data);
-            bn128.processWorks();
+            bls12.working[i]=false;
+            bls12.pendingDeferreds[i].resolve(data);
+            bls12.processWorks();
         };
     }
 
@@ -235,23 +236,23 @@ async function build() {
             const blob = new Blob(["(", thread.toString(), ")(self);"], { type: "text/javascript" });
             const url = URL.createObjectURL(blob);
 
-            bn128.workers[i] = new Worker(url);
+            bls12.workers[i] = new Worker(url);
 
-            bn128.workers[i].onmessage = getOnMsg(i);
+            bls12.workers[i].onmessage = getOnMsg(i);
 
         } else {
-            bn128.workers[i] = new NodeWorker("(" + thread.toString()+ ")(require('worker_threads').parentPort);", {eval: true});
+            bls12.workers[i] = new NodeWorker("(" + thread.toString()+ ")(require('worker_threads').parentPort);", {eval: true});
 
-            bn128.workers[i].on("message", getOnMsg(i));
+            bls12.workers[i].on("message", getOnMsg(i));
         }
 
-        bn128.working[i]=false;
+        bls12.working[i]=false;
     }
 
     const initPromises = [];
-    for (let i=0; i<bn128.workers.length;i++) {
-        const copyCode = bn128_wasm.code.buffer.slice(0);
-        initPromises.push(bn128.postAction(i, {
+    for (let i=0; i<bls12.workers.length;i++) {
+        const copyCode = bls12_wasm.code.buffer.slice(0);
+        initPromises.push(bls12.postAction(i, {
             command: "INIT",
             init: 5000,
             code: copyCode
@@ -261,10 +262,10 @@ async function build() {
 
     await Promise.all(initPromises);
 
-    return bn128;
+    return bls12;
 }
 
-class Bn128 {
+class Bls12 {
     constructor() {
         this.actionQueue = [];
     }
@@ -316,10 +317,24 @@ class Bn128 {
         return this.memory.buffer.slice(p, p+l);
     }
 
+    /*
+    // for mnt6-753
     bin2int(b) {
         const i32 = new Uint32Array(b);
-        let acc = bigInt(i32[7]);
-        for (let i=6; i>=0; i--) {
+        let acc = bigInt(i32[23]);
+        for (let i=22; i>=0; i--) {
+            acc = acc.shiftLeft(32);
+            acc = acc.add(i32[i]);
+        }
+        return acc.toString();
+    }
+    */
+
+
+    bin2int(b) {
+        const i32 = new Uint32Array(b);
+        let acc = bigInt(i32[11]);
+        for (let i=10; i>=0; i--) {
             acc = acc.shiftLeft(32);
             acc = acc.add(i32[i]);
         }
@@ -328,9 +343,9 @@ class Bn128 {
 
     bin2g1(b) {
         return [
-            this.bin2int(b.slice(0,32)),
-            this.bin2int(b.slice(32,64)),
-            this.bin2int(b.slice(64,96)),
+            this.bin2int(b.slice(0,48)),
+            this.bin2int(b.slice(48,96)),
+            this.bin2int(b.slice(96,144)),
         ];
     }
     bin2g2(b) {
@@ -379,7 +394,7 @@ class Bn128 {
             this.instance.exports.g1m_add(this.pr0, this.pr1, this.pr0);
         }
 
-        return this.getBin(this.pr0, 96);
+        return this.getBin(this.pr0, 144);
     }
 
     async g2_multiexp(scalars, points) {
@@ -417,7 +432,7 @@ class Bn128 {
     g1_affine(p) {
         this.putBin(this.pr0, p);
         this.instance.exports.g1m_affine(this.pr0, this.pr0);
-        return this.getBin(this.pr0, 96);
+        return this.getBin(this.pr0, 144);
     }
 
     g2_affine(p) {
@@ -429,7 +444,7 @@ class Bn128 {
     g1_fromMontgomery(p) {
         this.putBin(this.pr0, p);
         this.instance.exports.g1m_fromMontgomery(this.pr0, this.pr0);
-        return this.getBin(this.pr0, 96);
+        return this.getBin(this.pr0, 144);
     }
 
     g2_fromMontgomery(p) {
@@ -439,9 +454,9 @@ class Bn128 {
     }
 
     loadPoint1(b) {
-        const p = this.alloc(96);
+        const p = this.alloc(144);
         this.putBin(p, b);
-        this.instance.exports.f1m_one(p+64);
+        this.instance.exports.f1m_one(p+96);
         return p;
     }
 
@@ -455,6 +470,7 @@ class Bn128 {
 
     setInt(pos, _a, _size) {
         const n32 = _size ? (((_size - 1)>>2)+1) : SIZEF1 >> 2;
+        console.log('setInt n32:', n32);
         const a = bigInt(_a);
         if (pos & 0x7) throw new Error("Pointer must be aligned");
         for (let i=0; i<n32; i++) {
@@ -464,6 +480,7 @@ class Bn128 {
 
     setF1(p, e) {
         const n32 = (SIZEF1 >> 2);
+        console.log('setF1 n32:', n32);
         let arr;
         if (Array.isArray(e)) {
             if (e.length == n32 ) {
@@ -503,6 +520,7 @@ class Bn128 {
     }
 
     setG1Affine(p, e) {
+        console.log('setG1Affine e[0]:', e[0]);
         this.setF1(p, e[0]);
         this.setF1(p + SIZEF1, e[1]);
         this.setF1(p + 2*SIZEF1, 1);
@@ -517,6 +535,7 @@ class Bn128 {
     getF1(p) {
         this.instance.exports.f1m_fromMontgomery(p, p);
         const r = this.bin2int(this.i32.slice(p>>2, (p+SIZEF1)>>2)).toString();
+        console.log('getF1 r:', r);
         this.instance.exports.f1m_toMontgomery(p, p);
         return r;
     }
@@ -544,6 +563,8 @@ class Bn128 {
     }
 
     getG1(p) {
+        console.log('getG1 SIZEF1:', SIZEF1);
+        console.log('getG1 getF1(p):', this.getF1(p));
         return [
             this.getF1(p),
             this.getF1(p+SIZEF1),
