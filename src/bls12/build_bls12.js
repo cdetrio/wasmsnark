@@ -153,9 +153,11 @@ module.exports = function buildBLS12(module, _prefix) {
 
     const pAltBn128Twist = pNonResidueF6;
 
+    // taken from `BLS12_381_B_FOR_G2_C0_REPR` https://github.com/matter-labs/eip1962/blob/master/src/engines/bls12_381.rs#L166-L167
+    // matches up with https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L71-L78
     const pTwistCoefB = module.alloc([
-        ...utils.bigInt2BytesLE( toMontgomery("19485874751759354771024239261021720505790618469301721065564631296452457478373"), f1size ),
-        ...utils.bigInt2BytesLE( toMontgomery("266929791119991161246907387137283842545076965332900288569378510910307636690"), f1size ),
+        ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
+        ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
     ]);
 
     function build_mulNR6() {
@@ -219,10 +221,11 @@ module.exports = function buildBLS12(module, _prefix) {
         pOneT: pOneT
     };
 
-    const ateLoopCount = bigInt("29793968203157093288");
+    // ateLoopCount matches up with BLS_X https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L24
+    const ateLoopCount = bigInt("15132376222941642752");
     const ateLoopBitBytes = bits(ateLoopCount);
     const pAteLoopBitBytes = module.alloc(ateLoopBitBytes);
-    const isLoopNegative = false;
+    const isLoopNegative = true; // taken from https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L25
 
     const ateCoefSize = 3 * f2size;
     const ateNDblCoefs = ateLoopBitBytes.length-1;
@@ -230,8 +233,10 @@ module.exports = function buildBLS12(module, _prefix) {
     const ateNCoefs = ateNAddCoefs + ateNDblCoefs + 1;
     const prePSize = 3*2*n8;
     const preQSize = 3*n8*2 + ateNCoefs*ateCoefSize;
-    const finalExpIsNegative = false;
 
+    const finalExpIsNegative = false; // TODO: double check. Haven't noticed a corresponding parameter in a BLS implementation 
+
+    // TODO: use correct finalExpZ ???  Haven't noticed a corresponding param in a BLS implementation
     const finalExpZ = bigInt("4965661367192848881");
 
     function naf(n) {
@@ -472,11 +477,13 @@ module.exports = function buildBLS12(module, _prefix) {
         const y3 = c.i32_add(c.getLocal("pr"), c.i32_const(f2size));
         const z3 = c.i32_add(c.getLocal("pr"), c.i32_const(f2size*2));
 
+        // TODO: use correct MulByQX ???
         const MulByQX = c.i32_const(module.alloc([
             ...utils.bigInt2BytesLE( toMontgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261"), f1size ),
             ...utils.bigInt2BytesLE( toMontgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954"), f1size ),
         ]));
 
+        // TODO: use correct MulByQY ???
         const MulByQY = c.i32_const(module.alloc([
             ...utils.bigInt2BytesLE( toMontgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554"), f1size ),
             ...utils.bigInt2BytesLE( toMontgomery("3505843767911556378687030309984248845540243509899259641013678093033130930403"), f1size ),
@@ -853,6 +860,7 @@ module.exports = function buildBLS12(module, _prefix) {
                 [bigInt("1"), bigInt("0")],
                 [bigInt("1"), bigInt("0")],
             ],
+            // TODO: copy Frobenius coeffs from https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L313
             [
                 [bigInt("1"), bigInt("0")],
                 [bigInt("8376118865763821496583973867626364092589906065868298776909617916018768340080"), bigInt("16469823323077808223889137241176536799009286646108169935659301613961712198316")],
@@ -869,6 +877,7 @@ module.exports = function buildBLS12(module, _prefix) {
             ]
         ];
 
+        // TODO: copy coeffs from https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L162
         const F6 = [
             [
                 [bigInt("1"), bigInt("0")],
