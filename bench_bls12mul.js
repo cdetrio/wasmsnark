@@ -28,30 +28,24 @@ async function runBench() {
     const n8 = bls12.n8;
     console.log('n8:', n8);
 
-    /*
-    # Generator for curve over FQ
-    G1 = (FQ(1), FQ(2))
-    // why aren't these (1, 2)?
 
-    const p1_coords_affine = [
-                 refBigInt("1624070059937464756887933993293429854168590106605707304006200119738501412969"),
-                 refBigInt("3269329550605213075043232856820720631601935657990457502777101397807070461336")
-               ];
-    */
+    /*** test G1 scalar mul ***/
 
-
+    // this is G1 for BLS12-381
     const p1_coords_affine = [
                  refBigInt("3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507"),
                  refBigInt("1339506544944476473020471379941921221584933875938349620426543736416511423956333506472724655353366534992391756441569")
                ];
 
+    // note: could just use bls12.pG1gen instead
+    //console.log('bls12.pG1gen:', bls12.getG1(bls12.pG1gen));
+
     const p1 = bls12.alloc(n8*3);
     bls12.setG1Affine(p1, p1_coords_affine);
-    ///console.log('p1 before g1_toMontgomery:', bls12.getG1(p1));
     bls12.instance.exports.g1m_toMontgomery(p1, p1);
     console.log('p1 (in normal form):', bls12.getG1(p1));
 
-    const p_result = bls12.alloc(n8*3);
+    const g1_mul_result = bls12.alloc(n8*3);
 
     // scalar from the bn128mul_cdetrio11 test vector
     // 0xffff.. mod the bn128 modulus
@@ -61,23 +55,19 @@ async function runBench() {
     bls12.setF1(s_reduced, "42");
 
     console.time('g1m_timesScalar');
-    bls12.instance.exports.g1m_timesScalar(p1, s_reduced, n8, p_result);
+    bls12.instance.exports.g1m_timesScalar(p1, s_reduced, n8, g1_mul_result);
     console.timeEnd('g1m_timesScalar');
 
-    const p_result_jacobian = bls12.getG1(p_result);
-    console.log('p_result_jacobian:', p_result_jacobian);
+    const g1_mul_result_jacobian = bls12.getG1(g1_mul_result);
+    //console.log('g1_mul_result_jacobian:', g1_mul_result_jacobian);
 
+    const g1_mul_result_affine = bls12.alloc(n8*3);
+    bls12.instance.exports.g1m_affine(g1_mul_result, g1_mul_result_affine);
+    console.log('g1_result_affine:', bls12.getG1(g1_mul_result_affine));
 
-    const p_result_affine = bls12.alloc(n8*3);
-    bls12.instance.exports.g1m_affine(p_result, p_result_affine);
-    const g1_result_affine = bls12.getG1(p_result_affine);
-    console.log('g1_result_affine:', g1_result_affine);
     /*
-
-    // the correct result (matches py_ecc)
-
-    getF1 r: 1
-    g1_result_normal: [
+    // correct result (matches result from using py_ecc)
+    g1_result_affine: [
       '1983873765974394053638442523375087470331748000736383567808854590447652054859907830989243032669007682302800810318920',
       '84294790897768358280729139558542294020936903043834301551634579903689511426257434283606999889280642652447788957105',
       '1'
@@ -85,20 +75,49 @@ async function runBench() {
     */
 
 
+    /***  test G2 scalar mul  ***/
 
+    //console.log('bls12.pG2gen:', bls12.getG2(bls12.pG2gen));
+    const g2_times_2 = bls12.alloc(n8*6);
+
+    const scalar_two = bls12.alloc(n8);
+    bls12.setF1(scalar_two, "2");
+
+    bls12.instance.exports.g2m_timesScalar(bls12.pG2gen, scalar_two, n8, g2_times_2);
+    //console.log('bls12 g2 times 2 result:', bls12.getG2(g2_times_2));
+
+    const g2_times_2_affine = bls12.alloc(n8*3);
+    bls12.instance.exports.g2m_affine(g2_times_2, g2_times_2_affine);
+    console.log('g2_times_2_affine:', bls12.getG2(g2_times_2_affine));
     /*
-    const p_result_affine = bls12.alloc(n8*3);
-    bls12.instance.exports.g1m_affine(p_result, p_result_affine);
-
-    // getG1 converts with f1m_fromMontgomery before returning
-    const g1_result_normal = bls12.getG1(p_result_affine);
-    console.log('g1_result_normal:', g1_result_normal);
-
-    const p_result_normal = bls12.alloc(n8*3);
-    bls12.instance.exports.g1m_fromMontgomery(p_result_affine, p_result_normal);
-    console.log('bin2g1:', bls12.bin2g1(bls12.getBin(p_result_normal, 96)));
+    // correct result from py_ecc
+    normalize(multiply(G2, 2))
+    ((3419974069068927546093595533691935972093267703063689549934039433172037728172434967174817854768758291501458544631891,
+    1586560233067062236092888871453626466803933380746149805590083683748120990227823365075019078675272292060187343402359),
+    (678774053046495337979740195232911687527971909891867263302465188023833943429943242788645503130663197220262587963545,
+    2374407843478705782611042739236452317510200146460567463070514850492917978226342495167066333366894448569891658583283))
     */
 
+
+
+    /*** try pairing test ***/
+    // try test like https://github.com/ethereum/py_ecc/blob/master/tests/test_bn128_and_bls12_381.py#L315-L319
+
+    const pairing1_result = bls12.alloc(n8*12);
+
+    bls12.instance.exports.bls12_pairing(bls12.pG2gen, bls12.pG1gen, pairing1_result);
+    console.log('bls12 pairing1 result:', bls12.getF12(pairing1_result));
+
+    const pairing2_result = bls12.alloc(n8*12);
+
+    //bls12.instance.exports.bls12_pairing(g2_times_2, bls12.pG1gen, pairing2_result);
+    bls12.instance.exports.bls12_pairing(g2_times_2_affine, bls12.pG1gen, pairing2_result);
+    console.log('bls12 pairing2 result:', bls12.getF12(pairing2_result));
+
+
+    let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(bls12.pG2gen, bls12.pG1gen, g2_times_2_affine, bls12.pG1gen);
+    console.log('pairingEq2_result:', pairingEq2_result);
+    // if pairing check works, then pairingEq2_result == 1
 
 
     process.exit(0);

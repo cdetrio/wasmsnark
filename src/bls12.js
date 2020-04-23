@@ -177,7 +177,6 @@ async function build() {
     bls12.q = bigInt("4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
     bls12.r = bigInt("52435875175126190479447740508185965837690552500527637822603658699938581184513");
     bls12.n64 = Math.floor((bls12.q.minus(1).bitLength() - 1)/64) +1;
-    console.log('bls12.js n64:', bls12.n64);
     bls12.n32 = bls12.n64*2;
     bls12.n8 = bls12.n64*8;
 
@@ -470,7 +469,6 @@ class Bls12 {
 
     setInt(pos, _a, _size) {
         const n32 = _size ? (((_size - 1)>>2)+1) : SIZEF1 >> 2;
-        console.log('setInt n32:', n32);
         const a = bigInt(_a);
         if (pos & 0x7) throw new Error("Pointer must be aligned");
         for (let i=0; i<n32; i++) {
@@ -480,7 +478,6 @@ class Bls12 {
 
     setF1(p, e) {
         const n32 = (SIZEF1 >> 2);
-        console.log('setF1 n32:', n32);
         let arr;
         if (Array.isArray(e)) {
             if (e.length == n32 ) {
@@ -520,7 +517,6 @@ class Bls12 {
     }
 
     setG1Affine(p, e) {
-        console.log('setG1Affine e[0]:', e[0]);
         this.setF1(p, e[0]);
         this.setF1(p + SIZEF1, e[1]);
         this.setF1(p + 2*SIZEF1, 1);
@@ -535,7 +531,6 @@ class Bls12 {
     getF1(p) {
         this.instance.exports.f1m_fromMontgomery(p, p);
         const r = this.bin2int(this.i32.slice(p>>2, (p+SIZEF1)>>2)).toString();
-        console.log('getF1 r:', r);
         this.instance.exports.f1m_toMontgomery(p, p);
         return r;
     }
@@ -563,8 +558,6 @@ class Bls12 {
     }
 
     getG1(p) {
-        console.log('getG1 SIZEF1:', SIZEF1);
-        console.log('getG1 getF1(p):', this.getF1(p));
         return [
             this.getF1(p),
             this.getF1(p+SIZEF1),
