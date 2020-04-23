@@ -234,10 +234,15 @@ module.exports = function buildBLS12(module, _prefix) {
     const prePSize = 3*2*n8;
     const preQSize = 3*n8*2 + ateNCoefs*ateCoefSize;
 
-    const finalExpIsNegative = false; // TODO: double check. Haven't noticed a corresponding parameter in a BLS implementation 
-
     // TODO: use correct finalExpZ ???  Haven't noticed a corresponding param in a BLS implementation
-    const finalExpZ = bigInt("4965661367192848881");
+
+    // here is the BN parameter https://github.com/zcash-hackworks/bn/blob/f7116294867fab32137cb9cca9b94c661f3ee4e6/src/fields/fq12.rs#L99
+    // this is BN_PARAM_U (see https://github.com/ethereum/py_ecc/pull/3)
+    //const finalExpZ = bigInt("4965661367192848881");
+
+    // finalExpZ is BN_PARAM_U, which for BLS is -0xd201000000010000
+    const finalExpZ = bigInt("15132376222941642752");
+    const finalExpIsNegative = true; // in BLS, BN_PARAM_U is negative
 
     function naf(n) {
         let E = n;
@@ -478,6 +483,7 @@ module.exports = function buildBLS12(module, _prefix) {
         const z3 = c.i32_add(c.getLocal("pr"), c.i32_const(f2size*2));
 
         // TODO: use correct MulByQX ???
+        // are these the MulByQX and MulByQY params for BN?? https://github.com/zcash-hackworks/bn/blob/master/src/groups/mod.rs#L456-L470
         const MulByQX = c.i32_const(module.alloc([
             ...utils.bigInt2BytesLE( toMontgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261"), f1size ),
             ...utils.bigInt2BytesLE( toMontgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954"), f1size ),
@@ -561,11 +567,19 @@ module.exports = function buildBLS12(module, _prefix) {
             ))
         );
 
+        // I think the _mulByQ is here in BN  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L368-L372
+        // or here for BN https://github.com/zcash-hackworks/bn/blob/master/src/groups/mod.rs#L578-L579
+        // TODO: I don't see the _mulByQ in a BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L285-L308
+        // nor https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L163-L359
         f.addCode(
             c.call(prefix + "_mulByQ", cQX, Q1),
             c.call(prefix + "_mulByQ", Q1, Q2)
         );
+        
 
+        // this corresponds to BN https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L362
+        // TODO: I don't see this check for isLoopNegative in a `prepare` function of a BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L285-L308
+        // nor https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L163-L359
         if (isLoopNegative) {
             f.addCode(
                 c.call(f2mPrefix + "_neg", RY, RY),
@@ -801,6 +815,10 @@ module.exports = function buildBLS12(module, _prefix) {
 
                 c.call(f2mPrefix + "_mul1", ELL_VW,preP_PY, VW),
                 c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
+                // mulBy024 corresponds to this in BN https://github.com/zcash-hackworks/bn/blob/master/src/groups/mod.rs#L502
+                // or mul_by_014 and mul_by_034 in BN https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L135
+                // TODO: I see mul_by_014 in BLS  https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L68
+                // also in this BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L129
                 c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
                 c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
 
@@ -810,6 +828,7 @@ module.exports = function buildBLS12(module, _prefix) {
                         ...c.call(f2mPrefix + "_mul1", ELL_VW, preP_PY, VW),
                         ...c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
 
+                        // TODO: like _mulBy024 above
                         ...c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
                         ...c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
 
@@ -828,6 +847,9 @@ module.exports = function buildBLS12(module, _prefix) {
             );
         }
 
+        // corresponds to this in BN??  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L493-L499
+        // TODO: no correspondence in BLS  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L446-L450
+        // https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L97-L101
         f.addCode(
             c.call(f2mPrefix + "_mul1", ELL_VW, preP_PY, VW),
             c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
@@ -860,24 +882,71 @@ module.exports = function buildBLS12(module, _prefix) {
                 [bigInt("1"), bigInt("0")],
                 [bigInt("1"), bigInt("0")],
             ],
-            // TODO: copy Frobenius coeffs from https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L313
+            // TODO: check which version of Frobenius coefficients to use
+            // LayerXcom vesion: https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L313
+            // matter-labs version: https://github.com/matter-labs/eip1962/blob/master/src/engines/bls12_381.rs#L348-L430
+            // copied matter-labs version for now
             [
-                [bigInt("1"), bigInt("0")],
-                [bigInt("8376118865763821496583973867626364092589906065868298776909617916018768340080"), bigInt("16469823323077808223889137241176536799009286646108169935659301613961712198316")],
-                [bigInt("21888242871839275220042445260109153167277707414472061641714758635765020556617"), bigInt("0")],
-                [bigInt("11697423496358154304825782922584725312912383441159505038794027105778954184319"), bigInt("303847389135065887422783454877609941456349188919719272345083954437860409601")],
-                [bigInt("21888242871839275220042445260109153167277707414472061641714758635765020556616"), bigInt("0")],
-                [bigInt("3321304630594332808241809054958361220322477375291206261884409189760185844239"), bigInt("5722266937896532885780051958958348231143373700109372999374820235121374419868")],
-                [bigInt("21888242871839275222246405745257275088696311157297823662689037894645226208582"), bigInt("0")],
-                [bigInt("13512124006075453725662431877630910996106405091429524885779419978626457868503"), bigInt("5418419548761466998357268504080738289687024511189653727029736280683514010267")],
-                [bigInt("2203960485148121921418603742825762020974279258880205651966"), bigInt("0")],
-                [bigInt("10190819375481120917420622822672549775783927716138318623895010788866272024264"), bigInt("21584395482704209334823622290379665147239961968378104390343953940207365798982")],
-                [bigInt("2203960485148121921418603742825762020974279258880205651967"), bigInt("0")],
-                [bigInt("18566938241244942414004596690298913868373833782006617400804628704885040364344"), bigInt("16165975933942742336466353786298926857552937457188450663314217659523851788715")],
+                /*
+                const BLS12_381_FP12_FROB_C1_0: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        // 3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733L
+                        U384Repr([0x760900000002fffd,0xebf4000bc40c0002,0x5f48985753c758ba,0x77ce585370525745,0x5c071a97a256ec6d,0x15f65ec3fa80e493]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        U384Repr([0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733"), bigInt("0")],
+                /*
+                const BLS12_381_FP12_FROB_C1_1: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        // 1376889598125376727959055341295674356654925039980005395128828212993454708588385020118431646457834669954221389501541L
+                        U384Repr([0x07089552b319d465,0xc6695f92b50a8313,0x97e83cccd117228f,0xa35baecab2dc29ee,0x1ce393ea5daace4d,0x08f2220fb0fb66eb]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        // 2625519957096290665458734484440229799901957779959002490203229923130576941902452844324255982671180994083672883058246L
+                        U384Repr([0xb2f66aad4ce5d646,0x5842a06bfc497cec,0xcf4895d42599d394,0xc11b9cba40a8e8d0,0x2e3813cbe5a0de89,0x110eefda88847faf]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("1376889598125376727959055341295674356654925039980005395128828212993454708588385020118431646457834669954221389501541"), bigInt("2625519957096290665458734484440229799901957779959002490203229923130576941902452844324255982671180994083672883058246")],
+                // BLS12_381_FP12_FROB_C1_2
+                [bigInt("164100935063821718429441571564228692714892661155712396182489711759724172863571642402656826152716487580899414489658"), bigInt("0")],
+                // BLS12_381_FP12_FROB_C1_3
+                [bigInt("1821461487266245992767491788684378228087062278322214693001359809350238716280406307949636812899085786271837335624401"), bigInt("2180948067955421400650298037051525928469820541616793192330698326773792934210431556493050816229929877766056936935386")],
+                // BLS12_381_FP12_FROB_C1_4
+                [bigInt("0"), bigInt("0")],
+                // BLS12_381_FP12_FROB_C1_5
+                [bigInt("0"), bigInt("0")],
+                // BLS12_381_FP12_FROB_C1_6
+                [bigInt("622089355822194721898858157215427760489088928924632185372287956994594733411168033012610036405240999572314735291054"), bigInt("0")],
+                // and so on to BLS12_381_FP12_FROB_C1_11
+                [bigInt("0"), bigInt("0")],
+                [bigInt("0"), bigInt("0")],
+                [bigInt("0"), bigInt("0")],
+                [bigInt("0"), bigInt("0")],
+                [bigInt("0"), bigInt("0")],
             ]
         ];
 
-        // TODO: copy coeffs from https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L162
+        // TODO: check which version of Frobenius coefficients to use
+        // LayerXcom vesion: https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L162
+        // matter-labs version: https://github.com/matter-labs/eip1962/blob/master/src/engines/bls12_381.rs#L212-L273
+        // copied matter-labs version for now
         const F6 = [
             [
                 [bigInt("1"), bigInt("0")],
@@ -888,20 +957,96 @@ module.exports = function buildBLS12(module, _prefix) {
                 [bigInt("1"), bigInt("0")],
             ],
             [
-                [bigInt("1"), bigInt("0")],
-                [bigInt("21575463638280843010398324269430826099269044274347216827212613867836435027261"), bigInt("10307601595873709700152284273816112264069230130616436755625194854815875713954")],
-                [bigInt("21888242871839275220042445260109153167277707414472061641714758635765020556616"), bigInt("0")],
-                [bigInt("3772000881919853776433695186713858239009073593817195771773381919316419345261"), bigInt("2236595495967245188281701248203181795121068902605861227855261137820944008926")],
-                [bigInt("2203960485148121921418603742825762020974279258880205651966"), bigInt("0")],
-                [bigInt("18429021223477853657660792034369865839114504446431234726392080002137598044644"), bigInt("9344045779998320333812420223237981029506012124075525679208581902008406485703")],
+                /*
+                const BLS12_381_FP6_FROB_C1_0: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        // 3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733L
+                        U384Repr([0x760900000002fffd,0xebf4000bc40c0002,0x5f48985753c758ba,0x77ce585370525745,0x5c071a97a256ec6d,0x15f65ec3fa80e493]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        U384Repr([0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733"), bigInt("0")],
+                /*
+                const BLS12_381_FP6_FROB_C1_1: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        U384Repr([0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        // 3838308620157845674988348254171675463841990158783295489149568424364307477627266222040030802976299176456994858070129L
+                        U384Repr([0xcd03c9e48671f071,0x5dab22461fcda5d2,0x587042afd3851b95,0x8eb60ebe01bacb9e,0x03f97d6e83d050d2,0x18f0206554638741]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("0"), bigInt("3838308620157845674988348254171675463841990158783295489149568424364307477627266222040030802976299176456994858070129")],
+                // BLS12_381_FP6_FROB_C1_2
+                [bigInt("786190290886016440328299728779656453203981590080344581554777668754318906274739675415266862557957487153214149780712"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C1_3
+                [bigInt("0"), bigInt("3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733")],
+                // BLS12_381_FP6_FROB_C1_4
+                [bigInt("0"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C1_5
+                [bigInt("0"), bigInt("0")],
             ],
             [
-                [bigInt("1"), bigInt("0")],
-                [bigInt("2581911344467009335267311115468803099551665605076196740867805258568234346338"), bigInt("19937756971775647987995932169929341994314640652964949448313374472400716661030")],
-                [bigInt("2203960485148121921418603742825762020974279258880205651966"), bigInt("0")],
-                [bigInt("5324479202449903542726783395506214481928257762400643279780343368557297135718"), bigInt("16208900380737693084919495127334387981393726419856888799917914180988844123039")],
-                [bigInt("21888242871839275220042445260109153167277707414472061641714758635765020556616"), bigInt("0")],
-                [bigInt("13981852324922362344252311234282257507216387789820983642040889267519694726527"), bigInt("7629828391165209371577384193250820201684255241773809077146787135900891633097")],
+                /*
+                const BLS12_381_FP6_FROB_C2_0: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        // 3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733L
+                        U384Repr([0x760900000002fffd,0xebf4000bc40c0002,0x5f48985753c758ba,0x77ce585370525745,0x5c071a97a256ec6d,0x15f65ec3fa80e493]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        U384Repr([0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("3380320199399472671518931668520476396067793891014375699959770179129436917079669831430077592723774664465579537268733"), bigInt("0")],
+                /*
+                const BLS12_381_FP6_FROB_C2_1: decl_fp2!(U384Repr) = repr_into_fp2!(
+                    repr_into_fp!(
+                        // 3216219264335650953089490096956247703352901229858663303777280467369712744216098189027420766571058176884680122779075L
+                        U384Repr([0x890dc9e4867545c3,0x2af322533285a5d5,0x50880866309b7e2c,0xa20d1b8c7e881024,0x14e4f04fe2db9068,0x14e56d3f1564853a]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ), 
+                    repr_into_fp!(
+                        U384Repr([0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000,0x0000000000000000]), 
+                        U384Repr,
+                        BLS12_381_FIELD
+                    ),
+                    U384Repr,
+                    BLS12_381_EXTENSION_2_FIELD
+                );
+                */
+                [bigInt("3216219264335650953089490096956247703352901229858663303777280467369712744216098189027420766571058176884680122779075"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C2_2
+                [bigInt("3838308620157845674988348254171675463841990158783295489149568424364307477627266222040030802976299176456994858070129"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C2_3
+                [bigInt("622089355822194721898858157215427760489088928924632185372287956994594733411168033012610036405240999572314735291054"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C2_4
+                [bigInt("0"), bigInt("0")],
+                // BLS12_381_FP6_FROB_C2_5
+                [bigInt("0"), bigInt("0")],
             ]
         ];
 
@@ -1120,8 +1265,26 @@ module.exports = function buildBLS12(module, _prefix) {
         const inverse = c.i32_const(module.alloc(ftsize));
 
 
+        // I think this __cyclotomicExp_ for BN corresponds to his BN implementation https://github.com/zcash-hackworks/bn/blob/f7116294867fab32137cb9cca9b94c661f3ee4e6/src/fields/fq12.rs#L97-L101
+        // It might be following this paper "It can be shown that exponentiation by our choice of the z parameter requires..."
+        // > For the parameter selection z = -2^107 + 2^105 + 2^93 + 2^5...
+
+        // here is an implementation used for both BN and BLS https://github.com/matter-labs/eip1962/blob/master/src/extension_towers/fp12_as_2_over3_over_2.rs#L225-L243
+        // the eip1962 implementation doesn't use the `finalExpZ` parameter used here (passed in as `exponent`).
+
+        // here is a BLS implementation https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L116-L121
+        // and the `pow` function https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/lib.rs#L325-L343
+
+        // TODO: adapt to the implementation used for both BN and BLS, then check correctness
+
+
         f.addCode(
 //            c.call(ftmPrefix + "_exp", x, c.i32_const(pExponent), c.i32_const(32), res),
+
+            // for BLS conjugate is done here https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L119
+            // for BLS conjugage is done here https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L142
+            // for BN conjugate is done here https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L148
+            // for BN conjugate is done here https://github.com/zcash-hackworks/bn/blob/f7116294867fab32137cb9cca9b94c661f3ee4e6/src/fields/fq12.rs#L100
 
             c.call(ftmPrefix + "_conjugate", x, inverse),
             c.call(ftmPrefix + "_one", res),
@@ -1165,6 +1328,10 @@ module.exports = function buildBLS12(module, _prefix) {
     function buildFinalExponentiationLastChunk() {
         buildCyclotomicSquare();
         buildCyclotomicExp(finalExpZ, "w0");
+
+        // TODO: final exponentation in BLS  https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L116-L133
+        // corresponds to final_exponentiation_last_chunk in BN  https://github.com/zcash-hackworks/bn/blob/f7116294867fab32137cb9cca9b94c661f3ee4e6/src/fields/fq12.rs#L54-L84
+        // https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L573
 
         const f = module.addFunction(prefix+ "__finalExponentiationLastChunk");
         f.addParam("x", "i32");
