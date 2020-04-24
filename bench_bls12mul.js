@@ -104,19 +104,18 @@ async function runBench() {
     // try test like https://github.com/ethereum/py_ecc/blob/master/tests/test_bn128_and_bls12_381.py#L315-L319
 
     const pairing1_result = bls12.alloc(n8*12);
-
-    bls12.instance.exports.bls12_pairing(bls12.pG2gen, bls12.pG1gen, pairing1_result);
+    bls12.instance.exports.bls12_pairing(bls12.pG1gen, bls12.pG2gen, pairing1_result);
     console.log('bls12 pairing1 result:', bls12.getF12(pairing1_result));
 
     const pairing2_result = bls12.alloc(n8*12);
 
     //bls12.instance.exports.bls12_pairing(g2_times_2, bls12.pG1gen, pairing2_result);
-    bls12.instance.exports.bls12_pairing(g2_times_2_affine, bls12.pG1gen, pairing2_result);
+    bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2_affine, pairing2_result);
     console.log('bls12 pairing2 result:', bls12.getF12(pairing2_result));
 
 
-    let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(bls12.pG2gen, bls12.pG1gen, g2_times_2_affine, bls12.pG1gen);
-    console.log('pairingEq2_result:', pairingEq2_result);
+    //let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(bls12.pG2gen, bls12.pG1gen, g2_times_2_affine, bls12.pG1gen);
+    //console.log('pairingEq2_result:', pairingEq2_result);
     // if pairing check works, then pairingEq2_result == 1
 
 
