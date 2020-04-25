@@ -644,8 +644,8 @@ module.exports = function buildBLS12(module, _prefix) {
 
         // for mulBy014
         const x0  = c.getLocal("pEll0");
-        const x4  = c.getLocal("pEllVW");
-        const x1  = c.getLocal("pEllVV");
+        const x1  = c.getLocal("pEllVV"); //  c1 == ELL_VV
+        const x4  = c.getLocal("pEllVW"); //  c2 == ELL_VW
 
         const z0  = c.getLocal("pR"); // self
 
