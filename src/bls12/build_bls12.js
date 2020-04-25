@@ -143,9 +143,17 @@ module.exports = function buildBLS12(module, _prefix) {
 
     const pNonResidueF6 = module.alloc([
     //    ...utils.bigInt2BytesLE( toMontgomery(9), f1size ),
-        ...utils.bigInt2BytesLE( toMontgomery(9), f1size ), // using 0 here produces some correct results
+        ...utils.bigInt2BytesLE( toMontgomery(1), f1size ), // using 0 here produces some correct results
         ...utils.bigInt2BytesLE( toMontgomery(1), f1size ), // using 1 here produces some correct results
     ]);
+
+    /*
+    const pNonResidueF6 = module.alloc([
+    //    ...utils.bigInt2BytesLE( toMontgomery(9), f1size ),
+        ...utils.bigInt2BytesLE( bigInt(1), f1size ), // using 0 here produces some correct results
+        ...utils.bigInt2BytesLE( bigInt(1), f1size ), // using 1 here produces some correct results
+    ]);
+    */
     const pAltBn128Twist = pNonResidueF6;
 
 
@@ -676,10 +684,10 @@ module.exports = function buildBLS12(module, _prefix) {
 
             c.call(f2mPrefix + "_copy", x0, AUX12_0), // position 0
             c.call(f2mPrefix + "_copy", x1, AUX12_2), // position 1
-            c.call(f2mPrefix + "_zero", AUX12_4),
-            c.call(f2mPrefix + "_zero", AUX12_6),
+            c.call(f2mPrefix + "_zero", AUX12_4), // position 2
+            c.call(f2mPrefix + "_zero", AUX12_6), // position 3
             c.call(f2mPrefix + "_copy", x4, AUX12_8), // position 4
-            c.call(f2mPrefix + "_zero", AUX12_10),
+            c.call(f2mPrefix + "_zero", AUX12_10), // position 5
             c.call(ftmPrefix + "_mul", AUX12, z0, z0),
         );
     }
