@@ -186,18 +186,26 @@ describe("Basic tests for g1 in bn128", () => {
 
     it("Should multiply 024", async () => {
         const pf = pb.alloc(32*12);
+
+        // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         for (let i=0; i<12; i++) {
             pb.set(pf + i*32, i);
         }
         pb.ftm_toMontgomery(pf,pf);
+
+        // sets pEll0 to [1, 2]
         const pEll0 = pb.alloc(32*2);
         pb.set(pEll0, 1);
         pb.set(pEll0 + 32, 2);
         pb.f2m_toMontgomery(pEll0,pEll0);
+
+        // sets pVW to [3, 4]
         const pVW = pb.alloc(32*2);
         pb.set(pVW, 3);
         pb.set(pVW + 32, 4);
         pb.f2m_toMontgomery(pVW, pVW);
+
+        // sets pVV to [5, 6]
         const pVV = pb.alloc(32*2);
         pb.set(pVV, 5);
         pb.set(pVV + 32, 6);
@@ -206,12 +214,15 @@ describe("Basic tests for g1 in bn128", () => {
         pb.bn128__mulBy024(pEll0, pVW, pVV, pf);
 
         const res1 = getFieldElementF12(pf);
+
+        // reset pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         for (let i=0; i<12; i++) {
             pb.set(pf + i*32, i);
         }
         pb.ftm_toMontgomery(pf,pf);
-        pb.bn128__mulBy024(pEll0, pVW, pVV, pf);
 
+        // do same multiplication again
+        pb.bn128__mulBy024(pEll0, pVW, pVV, pf);
         const res2 = getFieldElementF12(pf);
 
         assertEqualF12(res1, res2);

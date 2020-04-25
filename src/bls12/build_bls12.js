@@ -490,6 +490,7 @@ module.exports = function buildBLS12(module, _prefix) {
         );
     }
 
+    /*
     function buildMulByQ() {
         const f = module.addFunction(prefix + "_mulByQ");
         f.addParam("p1", "i32");
@@ -526,10 +527,11 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(f2mPrefix + "_conjugate", z, z3),
         );
     }
+    */
 
 
     function buildPrepareG2() {
-        buildMulByQ();
+        //buildMulByQ();
         const f = module.addFunction(prefix+ "_prepareG2");
         f.addParam("pQ", "i32");
         f.addParam("ppreQ", "i32");
@@ -623,6 +625,67 @@ module.exports = function buildBLS12(module, _prefix) {
         */
     }
 
+
+    function buildMulBy014() {
+        const f = module.addFunction(prefix+ "__mulBy014");
+        f.addParam("pEll0", "i32");
+        f.addParam("pEllVW", "i32");
+        f.addParam("pEllVV", "i32");
+        f.addParam("pR", "i32");            // Result in F12
+
+        const c = f.getCodeBuilder();
+
+        /*
+        // for mulBy024
+        const x0  = c.getLocal("pEll0");
+        const x2  = c.getLocal("pEllVV");
+        const x4  = c.getLocal("pEllVW");
+        */
+
+        // for mulBy014
+        const x0  = c.getLocal("pEll0");
+        const x4  = c.getLocal("pEllVW");
+        const x1  = c.getLocal("pEllVV");
+
+        const z0  = c.getLocal("pR"); // self
+
+        const pAUX12 = module.alloc(ftsize);
+        const AUX12 = c.i32_const(pAUX12);
+        const AUX12_0 = c.i32_const(pAUX12); // position 0
+        const AUX12_2 = c.i32_const(pAUX12+f2size); // position 1
+        const AUX12_4 = c.i32_const(pAUX12+f2size*2); // position 2
+        const AUX12_6 = c.i32_const(pAUX12+f2size*3); // position 3
+        const AUX12_8 = c.i32_const(pAUX12+f2size*4); // position 4
+        const AUX12_10 = c.i32_const(pAUX12+f2size*5); // position 5
+
+        // for mul024, positions 0, 2, and 4 are non-zero
+        // for mul014, positions 0, 1, and 4 are non-zero
+
+        f.addCode(
+
+            /*
+            // for mulby024
+            c.call(f2mPrefix + "_copy", x0, AUX12_0), // position 0
+            c.call(f2mPrefix + "_zero", AUX12_2),
+            c.call(f2mPrefix + "_copy", x2, AUX12_4), // position 2
+            c.call(f2mPrefix + "_zero", AUX12_6),
+            c.call(f2mPrefix + "_copy", x4, AUX12_8), // position 4
+            c.call(f2mPrefix + "_zero", AUX12_10),
+            c.call(ftmPrefix + "_mul", AUX12, z0, z0),
+            */
+
+            c.call(f2mPrefix + "_copy", x0, AUX12_0), // position 0
+            c.call(f2mPrefix + "_copy", x1, AUX12_2), // position 1
+            c.call(f2mPrefix + "_zero", AUX12_4),
+            c.call(f2mPrefix + "_zero", AUX12_6),
+            c.call(f2mPrefix + "_copy", x4, AUX12_8), // position 4
+            c.call(f2mPrefix + "_zero", AUX12_10),
+            c.call(ftmPrefix + "_mul", AUX12, z0, z0),
+        );
+    }
+
+
+
     function buildMulBy024Old() {
         const f = module.addFunction(prefix+ "__mulBy024Old");
         f.addParam("pEll0", "i32");
@@ -632,11 +695,11 @@ module.exports = function buildBLS12(module, _prefix) {
 
         const c = f.getCodeBuilder();
 
-        const x0  = c.getLocal("pEll0");
+        const x0  = c.getLocal("pEll0"); //
         const x2  = c.getLocal("pEllVV");
         const x4  = c.getLocal("pEllVW");
 
-        const z0  = c.getLocal("pR");
+        const z0  = c.getLocal("pR"); // self
 
         const pAUX12 = module.alloc(ftsize);
         const AUX12 = c.i32_const(pAUX12);
@@ -815,9 +878,9 @@ module.exports = function buildBLS12(module, _prefix) {
         const preP_PX = c.getLocal("ppreP");
         const preP_PY = c.i32_add(c.getLocal("ppreP"), c.i32_const(f1size));
 
-        const ELL_0  = c.getLocal("pCoef");
-        const ELL_VW = c.i32_add(c.getLocal("pCoef"), c.i32_const(f2size));
-        const ELL_VV  = c.i32_add(c.getLocal("pCoef"), c.i32_const(2*f2size));
+        const ELL_0  = c.getLocal("pCoef"); // c0 (coeffs.0)
+        const ELL_VW = c.i32_add(c.getLocal("pCoef"), c.i32_const(f2size)); // c1 (coeffs.1) ??
+        const ELL_VV  = c.i32_add(c.getLocal("pCoef"), c.i32_const(2*f2size)); // c2 (coeffs.2) ??
 
 
         const pVW = module.alloc(f2size);
@@ -839,13 +902,15 @@ module.exports = function buildBLS12(module, _prefix) {
 
                 c.call(ftmPrefix + "_square", F, F),
 
-                c.call(f2mPrefix + "_mul1", ELL_VW,preP_PY, VW),
-                c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
+                c.call(f2mPrefix + "_mul1", ELL_VW, preP_PY, VW), // c2.mul_by_fp(&p.y) in eip1962 (c2 == ELL_VW)
+                c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV), // c1.mul_by_fp(&p.x) in eip1962 (c1 == ELL_VV)
+
                 // mulBy024 corresponds to this in BN https://github.com/zcash-hackworks/bn/blob/master/src/groups/mod.rs#L502
                 // or mul_by_014 and mul_by_034 in BN https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L135
                 // TODO: I see mul_by_014 in BLS  https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L68
                 // also in this BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L129
-                c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
+                //c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
+                c.call(prefix + "__mulBy014", ELL_0, VW, VV, F),
                 c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
 
                 c.if(
@@ -855,7 +920,9 @@ module.exports = function buildBLS12(module, _prefix) {
                         ...c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
 
                         // TODO: like _mulBy024 above
-                        ...c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
+                        //...c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
+                        ...c.call(prefix + "__mulBy014", ELL_0, VW, VV, F),
+                        
                         ...c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
 
                     ]
@@ -876,6 +943,7 @@ module.exports = function buildBLS12(module, _prefix) {
         // corresponds to this in BN??  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L493-L499
         // TODO: no correspondence in BLS  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L446-L450
         // https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L97-L101
+
         /*
         f.addCode(
             c.call(f2mPrefix + "_mul1", ELL_VW, preP_PY, VW),
@@ -889,6 +957,7 @@ module.exports = function buildBLS12(module, _prefix) {
             c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
         );
         */
+
 
     }
 
@@ -1547,6 +1616,8 @@ module.exports = function buildBLS12(module, _prefix) {
     buildPrepareG1();
     buildPrepareG2();
 
+    buildMulBy014();
+
     buildMulBy024();
     buildMulBy024Old();
     buildMillerLoop();
@@ -1574,6 +1645,7 @@ module.exports = function buildBLS12(module, _prefix) {
     module.exportFunction(prefix + "_millerLoop");
     module.exportFunction(prefix + "_finalExponentiation");
     module.exportFunction(prefix + "_finalExponentiationOld");
+    module.exportFunction(prefix + "__mulBy014");
     module.exportFunction(prefix + "__mulBy024");
     module.exportFunction(prefix + "__mulBy024Old");
     module.exportFunction(prefix + "__cyclotomicSquare");

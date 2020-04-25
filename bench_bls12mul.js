@@ -111,28 +111,296 @@ async function runBench() {
 
     const pairing1_result = bls12.alloc(n8*12);
     bls12.instance.exports.bls12_pairing(bls12.pG1gen, bls12.pG2gen, pairing1_result);
-    console.log('bls12 pairing1 result:', bls12.getF12(pairing1_result));
+    console.log('bls12 pairing1 result:', bls12.getF12hex(pairing1_result));
 
 
     const pairing1_result_squared = bls12.alloc(n8*12);
     bls12.instance.exports.ftm_mul(pairing1_result, pairing1_result, pairing1_result_squared);
 
-    console.log('bls12 pairing1 result squared:', bls12.getF12(pairing1_result_squared));
+    console.log('bls12 pairing1 result squared:', bls12.getF12hex(pairing1_result_squared));
 
 
     const pairing2_result = bls12.alloc(n8*12);
 
     //bls12.instance.exports.bls12_pairing(g2_times_2, bls12.pG1gen, pairing2_result);
     bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2_affine, pairing2_result);
-    console.log('bls12 pairing2 result:', bls12.getF12(pairing2_result));
+    console.log('bls12 pairing2 result:', bls12.getF12hex(pairing2_result));
 
-    console.log('bls12 pairing2 result in hex:', bls12.getF12hex(pairing2_result));
+    //console.log('bls12 pairing2 result in hex:', bls12.getF12hex(pairing2_result));
+
+
+
+
+
+
+    /*** test mulBy024 ***/
+
+
+    /* ---- original mulBy024 input from websnark test case ---- */
+    /*
+    const pf12 = bls12.alloc(n8*12);
+
+    // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    for (let i=0; i<12; i++) {
+        bls12.setF1(pf12 + i*n8, i);
+    }
+    bls12.instance.exports.ftm_toMontgomery(pf12,pf12);
+
+    // sets pEll0 to [1, 2]
+    const pEll0 = bls12.alloc(n8*2);
+    bls12.setF1(pEll0, 1);
+    bls12.setF1(pEll0 + n8, 2);
+    bls12.instance.exports.f2m_toMontgomery(pEll0,pEll0);
+
+    // sets pVW to [3, 4]
+    const pVW = bls12.alloc(n8*2);
+    bls12.setF1(pVW, 3);
+    bls12.setF1(pVW + n8, 4);
+    bls12.instance.exports.f2m_toMontgomery(pVW, pVW);
+
+    // sets pVV to [5, 6]
+    const pVV = bls12.alloc(n8*2);
+    bls12.setF1(pVV, 5);
+    bls12.setF1(pVV + n8, 6);
+    bls12.instance.exports.f2m_toMontgomery(pVV, pVV);
+
+    bls12.instance.exports.bls12__mulBy024(pEll0, pVW, pVV, pf12);
+    console.log('bls12 mulBy024 result:', bls12.getF12hex(pf12));
+    */
+    /* -------- */
+
+
+
+    /* ---- trying the mul_by_014 extracted case on mulBy024 ---- */
+    /*
+    const pf12 = bls12.alloc(n8*12);
+
+    // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    //for (let i=0; i<12; i++) {
+    //    bls12.setF1(pf12 + i*n8, i);
+    //}
+    bls12.setF1(pf12, 1);
+    bls12.instance.exports.ftm_toMontgomery(pf12,pf12);
+
+
+    // sets pEll0 to
+    // Fq2(0x044bfdd057dbcdea6da612e36a2d73e1ade1b4a8c83a5c43081a2faa102d9a0fdcd419484a87fe00f7fb863d52a58f97 +
+    // 0x0c253d9f18af8cee7a0bb79525a7abd34fceaf38c6d9cfb409e352ac344351cf6645648a6db0795fa5dedd099ce9c589 * u)
+    const pEll0 = bls12.alloc(n8*2);
+    bls12.setF1(pEll0, "661344457020705403819041421354580101951432978990714484546136067154448644677901242780333553114603085908603014844311");
+    bls12.setF1(pEll0 + n8, "1869359156447330187194973525617682829138118838905952662761966676861719131442862459958035727125876960615931717469577");
+    bls12.instance.exports.f2m_toMontgomery(pEll0,pEll0);
+
+    // sets pVW to
+    //fp12_as_2_over3_over_2 mul_by_014 input c1:
+    //Fq2(0x0d5f2306933f1974d7f31dca02ec8368bbdd142b25409d7876c64411ff398363756d822c2396cf09b57278b16af7df6e +
+    //0x0f323baca1e95243a536076bf20399408bc36450605b11f07f8e4d83d07bdd2ef8b5fa78f63c31881c8f544e49b7ffca * u)
+    const pVW = bls12.alloc(n8*2);
+    bls12.setF1(pVW, "2058081942084793187943375402308066038877299345066154555313186673646756001246555176303680639677075724715647905029998");
+    bls12.setF1(pVW + n8, "2338912793371169260778554541980750343874635399138037296233780945644164355980965971881602411571287752347904156106698");
+    bls12.instance.exports.f2m_toMontgomery(pVW, pVW);
+
+    // sets pVV to
+    //fp12_as_2_over3_over_2 mul_by_014 input c4:
+    //Fq2(0x08e4538d9097e4edff1eea0ffeaf2701e025c59353dad2c938775f5c1207ef0ee9f04248d0aab86ee1bd465e86b760b9 +
+    //0x03dde9e2b63848c3fce143c24bddddb05a4141ea0a5f45cff63fa49c1989a8f1b18e0038b694c8706b7b8cf979e5b782 * u)
+    const pVV = bls12.alloc(n8*2);
+    bls12.setF1(pVV, "1368588654857894878418275568728522126509225138946700730641519125678837625943210272426023428152507345261242478977209");
+    bls12.setF1(pVV + n8, "595162695551560935096575469966673100066956936968872996017557172004618803176589747013153322457437226437701984958338");
+    bls12.instance.exports.f2m_toMontgomery(pVV, pVV);
+
+    bls12.instance.exports.bls12__mulBy024(pEll0, pVW, pVV, pf12);
+    //bls12.instance.exports.bls12__mulBy024Old(pEll0, pVW, pVV, pf12);
+    console.log('bls12 mulBy024 result:', bls12.getF12hex(pf12));
+    */
+    /* -------- */
+
+
+
+
+
+
+    /* ---- trying the mul_by_014 extracted case on mulby014 ---- */
+    /*
+    const pf12 = bls12.alloc(n8*12);
+
+    // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    //for (let i=0; i<12; i++) {
+    //    bls12.setF1(pf12 + i*n8, i);
+    //}
+    bls12.setF1(pf12, 1);
+    bls12.instance.exports.ftm_toMontgomery(pf12,pf12);
+
+
+    // sets pEll0 to
+    // Fq2(0x044bfdd057dbcdea6da612e36a2d73e1ade1b4a8c83a5c43081a2faa102d9a0fdcd419484a87fe00f7fb863d52a58f97 +
+    // 0x0c253d9f18af8cee7a0bb79525a7abd34fceaf38c6d9cfb409e352ac344351cf6645648a6db0795fa5dedd099ce9c589 * u)
+    const pEll0 = bls12.alloc(n8*2);
+    bls12.setF1(pEll0, "661344457020705403819041421354580101951432978990714484546136067154448644677901242780333553114603085908603014844311");
+    bls12.setF1(pEll0 + n8, "1869359156447330187194973525617682829138118838905952662761966676861719131442862459958035727125876960615931717469577");
+    bls12.instance.exports.f2m_toMontgomery(pEll0,pEll0);
+
+    // sets pVW to
+    //fp12_as_2_over3_over_2 mul_by_014 input c1:
+    //Fq2(0x0d5f2306933f1974d7f31dca02ec8368bbdd142b25409d7876c64411ff398363756d822c2396cf09b57278b16af7df6e +
+    //0x0f323baca1e95243a536076bf20399408bc36450605b11f07f8e4d83d07bdd2ef8b5fa78f63c31881c8f544e49b7ffca * u)
+    const pVW = bls12.alloc(n8*2);
+    bls12.setF1(pVW, "2058081942084793187943375402308066038877299345066154555313186673646756001246555176303680639677075724715647905029998");
+    bls12.setF1(pVW + n8, "2338912793371169260778554541980750343874635399138037296233780945644164355980965971881602411571287752347904156106698");
+    bls12.instance.exports.f2m_toMontgomery(pVW, pVW);
+
+    // sets pVV to
+    //fp12_as_2_over3_over_2 mul_by_014 input c4:
+    //Fq2(0x08e4538d9097e4edff1eea0ffeaf2701e025c59353dad2c938775f5c1207ef0ee9f04248d0aab86ee1bd465e86b760b9 +
+    //0x03dde9e2b63848c3fce143c24bddddb05a4141ea0a5f45cff63fa49c1989a8f1b18e0038b694c8706b7b8cf979e5b782 * u)
+    const pVV = bls12.alloc(n8*2);
+    bls12.setF1(pVV, "1368588654857894878418275568728522126509225138946700730641519125678837625943210272426023428152507345261242478977209");
+    bls12.setF1(pVV + n8, "595162695551560935096575469966673100066956936968872996017557172004618803176589747013153322457437226437701984958338");
+    bls12.instance.exports.f2m_toMontgomery(pVV, pVV);
+
+    bls12.instance.exports.bls12__mulBy014(pEll0, pVW, pVV, pf12);
+    //bls12.instance.exports.bls12__mulBy024Old(pEll0, pVW, pVV, pf12);
+    console.log('bls12 mulBy014 result:', bls12.getF12hex(pf12));
+    */
+    /* -------- */
+
+
+
+
+
+    /* ---- trying another extracted mul_by_014 case on mulby014 ---- */
+
+    const pf12 = bls12.alloc(n8*12);
+
+    // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    //for (let i=0; i<12; i++) {
+    //    bls12.setF1(pf12 + i*n8, i);
+    //}
+    //bls12.setF1(pf12, 1);
+    //bls12.instance.exports.ftm_toMontgomery(pf12,pf12);
+
+    const pf12 = bls12.alloc(n8*12);
+
+    //Fq2(0x044bfdd057dbcdea6da612e36a2d73e1ade1b4a8c83a5c43081a2faa102d9a0fdcd419484a87fe00f7fb863d52a58f97 +
+    //  0x0c253d9f18af8cee7a0bb79525a7abd34fceaf38c6d9cfb409e352ac344351cf6645648a6db0795fa5dedd099ce9c589 * u) +
+    bls12.setF1(pEll0, "661344457020705403819041421354580101951432978990714484546136067154448644677901242780333553114603085908603014844311");
+    bls12.setF1(pEll0 + n8*1, "1869359156447330187194973525617682829138118838905952662761966676861719131442862459958035727125876960615931717469577");
+
+    // Fq2(0x0d5f2306933f1974d7f31dca02ec8368bbdd142b25409d7876c64411ff398363756d822c2396cf09b57278b16af7df6e +
+    // 0x0f323baca1e95243a536076bf20399408bc36450605b11f07f8e4d83d07bdd2ef8b5fa78f63c31881c8f544e49b7ffca * u) * v +
+    bls12.setF1(pEll0 + n8*2), "2058081942084793187943375402308066038877299345066154555313186673646756001246555176303680639677075724715647905029998");
+    bls12.setF1(pEll0 + n8*3, "2338912793371169260778554541980750343874635399138037296233780945644164355980965971881602411571287752347904156106698");
+
+    // (0,0)
+    bls12.setF1(pEll0 + n8*4, "0");
+    bls12.setF1(pEll0 + n8*5, "0");
+
+    // (0,0)
+    bls12.setF1(pEll0 + n8*6, "0");
+    bls12.setF1(pEll0 + n8*7, "0");
+
+    //Fq2(0x08e4538d9097e4edff1eea0ffeaf2701e025c59353dad2c938775f5c1207ef0ee9f04248d0aab86ee1bd465e86b760b9 +
+    //  0x03dde9e2b63848c3fce143c24bddddb05a4141ea0a5f45cff63fa49c1989a8f1b18e0038b694c8706b7b8cf979e5b782 * u) * v +
+    bls12.setF1(pEll0 + n8*8, "1368588654857894878418275568728522126509225138946700730641519125678837625943210272426023428152507345261242478977209");
+    bls12.setF1(pEll0 + n8*9, "595162695551560935096575469966673100066956936968872996017557172004618803176589747013153322457437226437701984958338");
+
+    // (0,0)
+    bls12.setF1(pEll0 + n8*10, "0");
+    bls12.setF1(pEll0 + n8*11, "0");
+
+    bls12.instance.exports.ftm_toMontgomery(pf12,pf12);
+
+
+
+    // sets pEll0 to
+    // fp12_as_2_over3_over_2 mul_by_014 input c0:
+    // Fq2(0x10266d9384fdcbceeea3ec5bd05a41fba2d8475ceb8f9edcfeee8ad1ef1ca8966a832257cfbac1f5d2126758b55e0ad7 +
+    // 0x08b61e1935180cd88111641285215e738acb324b96edfbd39c96c2bcb14b7fc223bed1b43439b7d55a7fd0638e8905c4 * u)
+    const pEll0 = bls12.alloc(n8*2);
+    bls12.setF1(pEll0, "2485729354004455654586201942617502473200617632395416612368298004001247711670119227310385195533242093217669187504855");
+    bls12.setF1(pEll0 + n8, "1340806677183940909823857345206370671646152762412094373932797411726178254910026861105791551267167917383941377033668");
+    bls12.instance.exports.f2m_toMontgomery(pEll0,pEll0);
+
+    // sets pVW to
+    // fp12_as_2_over3_over_2 mul_by_014 input c1:
+    // Fq2(0x14114543a879fd58f36e47ac62fda6ed69a64f0235f49fc70accd4e5af7743412577ba307fa5d478cbb7ab1dfca1d25c +
+    // 0x019f6fe14a668d5ead1012520862ef036a7658c8b4f0998abe6449696cac6a8b276450642c87b9ae319e34e2e23f1ba6 * u)
+    const pVW = bls12.alloc(n8*2);
+    bls12.setF1(pVW, "3088665261546901360691936814757622859842679786970711146686483884419454218153160095579742367163090882824005325279836");
+    bls12.setF1(pVW + n8, "249771919035547778968352068356785805691662679350449018843357624394438358582079477030429991165095205861247462349734");
+    bls12.instance.exports.f2m_toMontgomery(pVW, pVW);
+
+    // sets pVV to
+    //fp12_as_2_over3_over_2 mul_by_014 input c2: 
+    //q2(0x024cbbf9815b49277bb7c251b1543bbc8ce3582ecb6006e0759fd5da966cd9efae22d8be36790d0c97e1dc71a0db5502 +
+    //0x124242085df829831336cc45fc0213c76d8f30948ccd703996a75af68ca97cd6a3105496678d612ab656e73eafba426d * u)
+
+    const pVV = bls12.alloc(n8*2);
+    bls12.setF1(pVV, "1368588654857894878418275568728522126509225138946700730641519125678837625943210272426023428152507345261242478977209");
+    bls12.setF1(pVV + n8, "595162695551560935096575469966673100066956936968872996017557172004618803176589747013153322457437226437701984958338");
+    bls12.instance.exports.f2m_toMontgomery(pVV, pVV);
+
+    bls12.instance.exports.bls12__mulBy014(pEll0, pVW, pVV, pf12);
+    //bls12.instance.exports.bls12__mulBy024Old(pEll0, pVW, pVV, pf12);
+    console.log('bls12 mulBy014 result:', bls12.getF12hex(pf12));
+
+    /* -------- */
+
+
+
+
+
+
+
+
+    /***** do pairingEq2 test ****/
+    const g2_times_27 = bls12.alloc(n8*6);
+    const g1_times_37 = bls12.alloc(n8*3);
+    const g1_times_999 = bls12.alloc(n8*3);
+
+    const scalar_27 = bls12.alloc(n8);
+    bls12.setF1(scalar_27, "27");
+    const scalar_37 = bls12.alloc(n8);
+    bls12.setF1(scalar_37, "37");
+    const scalar_999 = bls12.alloc(n8);
+    bls12.setF1(scalar_999, "999");
+
+    bls12.instance.exports.g1m_timesScalar(bls12.pG1gen, scalar_37, n8, g1_times_37);
+    bls12.instance.exports.g1m_timesScalar(bls12.pG1gen, scalar_999, n8, g1_times_999);
+    bls12.instance.exports.g2m_timesScalar(bls12.pG2gen, scalar_27, n8, g2_times_27);
+
+    bls12.instance.exports.g1m_affine(g1_times_37, g1_times_37);
+    bls12.instance.exports.g1m_affine(g1_times_999, g1_times_999);
+    bls12.instance.exports.g2m_affine(g2_times_27, g2_times_27);
+
+    const g1_times_999_neg = bls12.alloc(n8*3);
+    bls12.instance.exports.g1m_neg(g1_times_999, g1_times_999_neg);
+
+    console.log('bls12.pOneT:', bls12.getF12(bls12.pOneT));
+
+    /*
+    const composit1_result = bls12.alloc(n8*12);
+    bls12.instance.exports.bls12_pairing(g1_times_37, g2_times_27, composit1_result);
+    console.log('composit1_result:', bls12.getF12(composit1_result));
+
+    const composit2_result = bls12.alloc(n8*12);
+    bls12.instance.exports.bl12_pairing(g1_times_999, bn128.pG2gen, composit2_result);
+    console.log('composit2_result:', bls12.getF12(composit2_result));
+    */
+
+
+    let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(g1_times_37, g2_times_27, g1_times_999_neg, bls12.pG2gen, bls12.pOneT);
+    console.log('pairingEq2_result:', pairingEq2_result);
+
+    /* -------- */
+
+
+
 
 
     //let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(bls12.pG2gen, bls12.pG1gen, g2_times_2_affine, bls12.pG1gen);
     //console.log('pairingEq2_result:', pairingEq2_result);
     // if pairing check works, then pairingEq2_result == 1
-
 
     /*
     const pPreP = bls12.alloc(48*3);
