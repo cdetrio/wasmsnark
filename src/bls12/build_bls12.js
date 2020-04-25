@@ -142,23 +142,33 @@ module.exports = function buildBLS12(module, _prefix) {
     ]);
 
     const pNonResidueF6 = module.alloc([
-        ...utils.bigInt2BytesLE( toMontgomery(9), f1size ),
-        ...utils.bigInt2BytesLE( toMontgomery(1), f1size ),
+    //    ...utils.bigInt2BytesLE( toMontgomery(9), f1size ),
+        ...utils.bigInt2BytesLE( toMontgomery(9), f1size ), // using 0 here produces some correct results
+        ...utils.bigInt2BytesLE( toMontgomery(1), f1size ), // using 1 here produces some correct results
     ]);
+    const pAltBn128Twist = pNonResidueF6;
+
+
 
     const pTwoInv = module.alloc([
         ...utils.bigInt2BytesLE( toMontgomery(  bigInt(2).modInv(q)), f1size ),
         ...utils.bigInt2BytesLE( bigInt(0), f1size )
     ]);
+    //console.log('pTwoInv:', )
 
-    const pAltBn128Twist = pNonResidueF6;
 
     // taken from `BLS12_381_B_FOR_G2_C0_REPR` https://github.com/matter-labs/eip1962/blob/master/src/engines/bls12_381.rs#L166-L167
     // matches up with https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/fq.rs#L71-L78
+    //const pTwistCoefB = module.alloc([
+    //    ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
+    //    ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
+    //]);
     const pTwistCoefB = module.alloc([
-        ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
-        ...utils.bigInt2BytesLE( toMontgomery("1514052131932888505822357196874193114600527104240479143842906308145652716846165732392247483508051665748635331395571"), f1size ),
+        ...utils.bigInt2BytesLE( toMontgomery("4"), f1size ),
+        ...utils.bigInt2BytesLE( toMontgomery("4"), f1size ),
     ]);
+
+
 
     function build_mulNR6() {
         const f = module.addFunction(prefix + "_mulNR6");
@@ -218,7 +228,10 @@ module.exports = function buildBLS12(module, _prefix) {
         pG2zero: pG2zero,
         pq: module.modules["f1m"].pq,
         pr: pr,
-        pOneT: pOneT
+        pOneT: pOneT,
+        pTwoInv: pTwoInv,
+        pAltBn128Twist: pAltBn128Twist
+        
     };
 
     // ateLoopCount matches up with BLS_X https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L24
@@ -229,7 +242,9 @@ module.exports = function buildBLS12(module, _prefix) {
 
     const ateCoefSize = 3 * f2size;
     const ateNDblCoefs = ateLoopBitBytes.length-1;
+    console.log('ateNDblCoefs:', ateNDblCoefs);
     const ateNAddCoefs = ateLoopBitBytes.reduce((acc, b) =>  acc + ( b!=0 ? 1 : 0)   ,0);
+    console.log('ateNAddCoefs:', ateNAddCoefs);
     const ateNCoefs = ateNAddCoefs + ateNDblCoefs + 1;
     const prePSize = 3*2*n8;
     const preQSize = 3*n8*2 + ateNCoefs*ateCoefSize;
@@ -358,8 +373,10 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(f2mPrefix + "_mul", D, Y2, AUX),
             c.call(f2mPrefix + "_mul", E, X2, ELL_0),
             c.call(f2mPrefix + "_sub", ELL_0, AUX, ELL_0),
-            c.call(f2mPrefix + "_mul", ELL_0, c.i32_const(pAltBn128Twist), ELL_0),
 
+
+            //c.call(f2mPrefix + "_mul", ELL_0, c.i32_const(pAltBn128Twist), ELL_0),
+            // this is commented out `j.mul_by_nonresidue(self.fp6_extension);` in eip1962 for bn128
 
             // ell_VV = - E (later: * xP)
             c.call(f2mPrefix + "_neg", E, ELL_VV),
@@ -402,6 +419,8 @@ module.exports = function buildBLS12(module, _prefix) {
 
         f.addCode(
 
+            // pTwoInv = 0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd556
+
             // A = X1 * Y1 / 2
             c.call(f2mPrefix + "_mul", Y1, c.i32_const(pTwoInv), A),
             c.call(f2mPrefix + "_mul", X1, A, A),
@@ -410,31 +429,33 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(f2mPrefix + "_square", Y1, B),
 
             // C = Z1^2
-            c.call(f2mPrefix + "_square", Z1, C),
+            c.call(f2mPrefix + "_square", Z1, C), // c.square();
 
             // D = 3 * C
-            c.call(f2mPrefix + "_add", C, C, D),
-            c.call(f2mPrefix + "_add", D, C, D),
+            c.call(f2mPrefix + "_add", C, C, D), // t0.double();
+            c.call(f2mPrefix + "_add", D, C, D),  // t0.add_assign(&c);
 
             // E = twist_b * D
-            c.call(f2mPrefix + "_mul", c.i32_const(pTwistCoefB), D, E),
+            c.call(f2mPrefix + "_mul", c.i32_const(pTwistCoefB), D, E), // e.mul_assign(&t0);
+            // (4, 4)
 
             // F = 3 * E
-            c.call(f2mPrefix + "_add", E, E, F),
-            c.call(f2mPrefix + "_add", E, F, F),
+            c.call(f2mPrefix + "_add", E, E, F), // f.double();
+            c.call(f2mPrefix + "_add", E, F, F), // f.add_assign(&e);
 
             // G = (B+F)/2
-            c.call(f2mPrefix + "_add", B, F, G),
-            c.call(f2mPrefix + "_mul", G, c.i32_const(pTwoInv), G),
+            c.call(f2mPrefix + "_add", B, F, G), // g.add_assign(&f);
+            c.call(f2mPrefix + "_mul", G, c.i32_const(pTwoInv), G), // g.mul_by_fp(two_inv)
 
             // H = (Y1+Z1)^2-(B+C)
-            c.call(f2mPrefix + "_add", B, C, AUX),
-            c.call(f2mPrefix + "_add", Y1, Z1, H),
-            c.call(f2mPrefix + "_square", H, H),
-            c.call(f2mPrefix + "_sub", H, AUX, H),
+            c.call(f2mPrefix + "_add", B, C, AUX), // t1.add_assign(&c);
+            c.call(f2mPrefix + "_add", Y1, Z1, H), // h.add_assign(&r.z);
+            c.call(f2mPrefix + "_square", H, H),  //  h.square();
+            c.call(f2mPrefix + "_sub", H, AUX, H), // h.sub_assign(&t1);
 
             // I = E-B
-            c.call(f2mPrefix + "_sub", E, B, I),
+            //c.call(f2mPrefix + "_sub", E, B, I),
+            c.call(f2mPrefix + "_sub", E, B, ELL_0),
 
             // J = X1^2
             c.call(f2mPrefix + "_square", X1, J),
@@ -456,7 +477,8 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(f2mPrefix + "_mul", B, H, Z1),
 
             // ell_0 = xi * I
-            c.call(f2mPrefix + "_mul", c.i32_const(pAltBn128Twist), I, ELL_0),
+            //c.call(f2mPrefix + "_mul", c.i32_const(pAltBn128Twist), I, ELL_0),
+            // this is commented out `i.mul_by_nonresidue(self.fp6_extension);` in eip1962 for bn128
 
             // ell_VW = - H (later: * yP)
             c.call(f2mPrefix + "_neg", H, ELL_VW),
@@ -571,15 +593,18 @@ module.exports = function buildBLS12(module, _prefix) {
         // or here for BN https://github.com/zcash-hackworks/bn/blob/master/src/groups/mod.rs#L578-L579
         // TODO: I don't see the _mulByQ in a BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L285-L308
         // nor https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L163-L359
+        /*
         f.addCode(
             c.call(prefix + "_mulByQ", cQX, Q1),
             c.call(prefix + "_mulByQ", Q1, Q2)
         );
-        
+        */
+
 
         // this corresponds to BN https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L362
         // TODO: I don't see this check for isLoopNegative in a `prepare` function of a BLS implementation https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L285-L308
         // nor https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L163-L359
+        /*
         if (isLoopNegative) {
             f.addCode(
                 c.call(f2mPrefix + "_neg", RY, RY),
@@ -595,6 +620,7 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(prefix + "_prepAddStep", Q2, R, c.getLocal("pCoef")),
             c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
         );
+        */
     }
 
     function buildMulBy024Old() {
@@ -850,6 +876,7 @@ module.exports = function buildBLS12(module, _prefix) {
         // corresponds to this in BN??  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L493-L499
         // TODO: no correspondence in BLS  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L446-L450
         // https://github.com/LayerXcom/bellman-substrate/blob/master/pairing/src/bls12_381/mod.rs#L97-L101
+        /*
         f.addCode(
             c.call(f2mPrefix + "_mul1", ELL_VW, preP_PY, VW),
             c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
@@ -860,8 +887,8 @@ module.exports = function buildBLS12(module, _prefix) {
             c.call(f2mPrefix + "_mul1", ELL_VV, preP_PX, VV),
             c.call(prefix + "__mulBy024", ELL_0, VW, VV, F),
             c.setLocal("pCoef", c.i32_add(c.getLocal("pCoef"), c.i32_const(ateCoefSize))),
-
         );
+        */
 
     }
 
@@ -1445,7 +1472,7 @@ module.exports = function buildBLS12(module, _prefix) {
         f.addParam("x", "i32");
         f.addParam("r", "i32");
 
-        const exponent = bigInt("552484233613224096312617126783173147097382103762957654188882734314196910839907541213974502761540629817009608548654680343627701153829446747810907373256841551006201639677726139946029199968412598804882391702273019083653272047566316584365559776493027495458238373902875937659943504873220554161550525926302303331747463515644711876653177129578303191095900909191624817826566688241804408081892785725967931714097716709526092261278071952560171111444072049229123565057483750161460024353346284167282452756217662335528813519139808291170539072125381230815729071544861602750936964829313608137325426383735122175229541155376346436093930287402089517426973178917569713384748081827255472576937471496195752727188261435633271238710131736096299798168852925540549342330775279877006784354801422249722573783561685179618816480037695005515426162362431072245638324744480");
+        const exponent = bigInt("322277361516934140462891564586510139908379969514828494218366688025288661041104682794998680497580008899973249814104447692778988208376779573819485263026159588510513834876303014016798809919343532899164848730280942609956670917565618115867287399623286813270357901731510188149934363360381614501334086825442271920079363289954510565375378443704372994881406797882676971082200626541916413184642520269678897559532260949334760604962086348898118982248842634379637598665468817769075878555493752214492790122785850202957575200176084204422751485957336465472324810982833638490904279282696134323072515220044451592646885410572234451732790590013479358343841220074174848221722017083597872017638514103174122784843925578370430843522959600095676285723737049438346544753168912974976791528535276317256904336520179281145394686565050419250614107803233314658825463117900250701199181529205942363159325765991819433914303908860460720581408201373164047773794825411011922305820065611121544561808414055302212057471395719432072209245600258134364584636810093520285711072578721435517884103526483832733289802426157301542744476740008494780363354305116978805620671467071400711358839553375340724899735460480144599782014906586543813292157922220645089192130209334926661588737007768565838519456601560804957985667880395221049249803753582637708560");
 
         const pExponent = module.alloc(utils.bigInt2BytesLE( exponent, 352 ));
 
@@ -1489,7 +1516,8 @@ module.exports = function buildBLS12(module, _prefix) {
             f.addCode(c.call(ftmPrefix + "_mul", resT, auxT, resT ));
         }
 
-        f.addCode(c.call(prefix + "_finalExponentiation", resT, resT ));
+        //f.addCode(c.call(prefix + "_finalExponentiation", resT, resT ));
+        f.addCode(c.call(prefix + "_finalExponentiationOld", resT, resT ));
 
         f.addCode(c.call(ftmPrefix + "_eq", resT, c.getLocal("c")));
     }
@@ -1509,7 +1537,7 @@ module.exports = function buildBLS12(module, _prefix) {
         f.addCode(c.call(prefix + "_prepareG1", c.getLocal("p"), c.i32_const(pPreP) ));
         f.addCode(c.call(prefix + "_prepareG2", c.getLocal("q"), c.i32_const(pPreQ) ));
         f.addCode(c.call(prefix + "_millerLoop", c.i32_const(pPreP), c.i32_const(pPreQ), resT ));
-        f.addCode(c.call(prefix + "_finalExponentiation", resT, c.getLocal("r") ));
+        f.addCode(c.call(prefix + "_finalExponentiationOld", resT, c.getLocal("r") ));
     }
 
 

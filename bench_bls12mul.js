@@ -20,6 +20,12 @@ const assert = require("assert");
 const refBigInt = require("snarkjs").bigInt;
 
 const buildBls12 = require("./src/bls12.js");
+/*
+function buf2hex(buffer) { // buffer is an ArrayBuffer
+  //return Array.prototype.map.call(new Uint8Array(buffer).reverse(), x => ('00' + x.toString(16)).slice(-2)).join('');
+  return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('');
+}
+*/
 
 
 async function runBench() {
@@ -107,16 +113,50 @@ async function runBench() {
     bls12.instance.exports.bls12_pairing(bls12.pG1gen, bls12.pG2gen, pairing1_result);
     console.log('bls12 pairing1 result:', bls12.getF12(pairing1_result));
 
+
+    const pairing1_result_squared = bls12.alloc(n8*12);
+    bls12.instance.exports.ftm_mul(pairing1_result, pairing1_result, pairing1_result_squared);
+
+    console.log('bls12 pairing1 result squared:', bls12.getF12(pairing1_result_squared));
+
+
     const pairing2_result = bls12.alloc(n8*12);
 
     //bls12.instance.exports.bls12_pairing(g2_times_2, bls12.pG1gen, pairing2_result);
     bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2_affine, pairing2_result);
     console.log('bls12 pairing2 result:', bls12.getF12(pairing2_result));
 
+    console.log('bls12 pairing2 result in hex:', bls12.getF12hex(pairing2_result));
+
 
     //let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(bls12.pG2gen, bls12.pG1gen, g2_times_2_affine, bls12.pG1gen);
     //console.log('pairingEq2_result:', pairingEq2_result);
     // if pairing check works, then pairingEq2_result == 1
+
+
+    /*
+    const pPreP = bls12.alloc(48*3);
+    const pPreQ = bls12.alloc(48*2*3 + 48*2*3*67); // 68 total
+
+    //bls12.instance.exports.bn128_prepareG1(bls12.pG1gen, pPreP);
+    //console.log('bls12 prepareG2 result:', bls12.getF12hex(pPreQ));
+
+    bls12.instance.exports.bls12_prepareG2(bls12.pG2gen, pPreQ);
+    //console.log('bls12 prepareG2 result:', bls12.getF12hex(pPreQ));
+
+    const fq12len = (48*2*3)*1;
+
+    console.log('bls12 prepareG2 result[0]:', bls12.getF6hex(pPreQ));
+    console.log('bls12 prepareG2 result[1]:', bls12.getF6hex(pPreQ + fq12len*1));
+    console.log('bls12 prepareG2 result[2]:', bls12.getF6hex(pPreQ + fq12len*2));
+    console.log('bls12 prepareG2 result[3]:', bls12.getF6hex(pPreQ + fq12len*3));
+    console.log('bls12 prepareG2 result[4]:', bls12.getF6hex(pPreQ + fq12len*4));
+    console.log('bls12 prepareG2 result[5]:', bls12.getF6hex(pPreQ + fq12len*5));
+
+    console.log('bls12 pTwoInv:', bls12.getF1(bls12.pTwoInv));
+    //console.log('bls12 pAltBn128Twist:', bls12.getF2hexMont(bls12.pAltBn128Twist));
+    console.log('bls12 pAltBn128Twist:', bls12.getF2hex(bls12.pAltBn128Twist));
+    */
 
 
     process.exit(0);

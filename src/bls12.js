@@ -198,6 +198,9 @@ async function build() {
     bls12.pG2gen = bls12_wasm.pG2gen;
     bls12.pG2zero = bls12_wasm.pG2zero;
     bls12.pOneT = bls12_wasm.pOneT;
+    bls12.pTwoInv = bls12_wasm.pTwoInv;
+    bls12.pAltBn128Twist = bls12_wasm.pAltBn128Twist;
+    console.log('bls12.pTwoInv:', bls12.pTwoInv);
 
     bls12.pr0 = bls12.alloc(192);
     bls12.pr1 = bls12.alloc(192);
@@ -328,6 +331,16 @@ class Bls12 {
         return acc.toString();
     }
     */
+
+    bin2hex(b) {
+      const i32 = new Uint32Array(b);
+      let acc = bigInt(i32[11]);
+      for (let i=10; i>=0; i--) {
+          acc = acc.shiftLeft(32);
+          acc = acc.add(i32[i]);
+      }
+      return acc.toString(16);
+    }
 
 
     bin2int(b) {
@@ -535,10 +548,42 @@ class Bls12 {
         return r;
     }
 
+    getF1hex(p) {
+        this.instance.exports.f1m_fromMontgomery(p, p);
+        let r = this.bin2hex(this.i32.slice(p>>2, (p+SIZEF1)>>2)).toString(16);
+        if (r.length == 95) { r = "0" + r; }
+        if (r.length == 94) { r = "00" + r; }
+        this.instance.exports.f1m_toMontgomery(p, p);
+        return r;
+    }
+
+    getF1hexMont(p) {
+        //this.instance.exports.f1m_fromMontgomery(p, p);
+        let r = this.bin2hex(this.i32.slice(p>>2, (p+SIZEF1)>>2)).toString(16);
+        if (r.length == 95) { r = "0" + r; }
+        if (r.length == 94) { r = "00" + r; }
+        //this.instance.exports.f1m_toMontgomery(p, p);
+        return r;
+    }
+
     getF2(p) {
         return [
             this.getF1(p),
             this.getF1(p+SIZEF1)
+        ];
+    }
+
+    getF2hex(p) {
+        return [
+            this.getF1hex(p),
+            this.getF1hex(p+SIZEF1)
+        ];
+    }
+
+    getF2hexMont(p) {
+        return [
+            this.getF1hexMont(p),
+            this.getF1hexMont(p+SIZEF1)
         ];
     }
 
@@ -550,10 +595,25 @@ class Bls12 {
         ];
     }
 
+    getF6hex(p) {
+        return [
+            this.getF2hex(p),
+            this.getF2hex(p+2*SIZEF1),
+            this.getF2hex(p+4*SIZEF1)
+        ];
+    }
+
     getF12(p) {
         return [
             this.getF6(p),
             this.getF6(p+6*SIZEF1),
+        ];
+    }
+
+    getF12hex(p) {
+        return [
+            this.getF6hex(p),
+            this.getF6hex(p+6*SIZEF1),
         ];
     }
 
