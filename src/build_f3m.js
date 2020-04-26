@@ -393,7 +393,12 @@ module.exports = function buildF3m(module, mulNonResidueFn, prefix, f1mPrefix) {
 
         const c = f.getCodeBuilder();
 
+       // f.addCode(c.call("debug_mark", c.i32_const(66)));
+
         const x0 = c.getLocal("x");
+
+        //f.addCode(c.call("debug_log32", x0));
+
         const x1 = c.i32_add(c.getLocal("x"), c.i32_const(f1n8));
         const x2 = c.i32_add(c.getLocal("x"), c.i32_const(2*f1n8));
         const r0 = c.getLocal("r");
@@ -439,7 +444,9 @@ module.exports = function buildF3m(module, mulNonResidueFn, prefix, f1mPrefix) {
 
             c.call(f1mPrefix+"_mul", t6, c0, r0),
             c.call(f1mPrefix+"_mul", t6, c1, r1),
-            c.call(f1mPrefix+"_mul", t6, c2, r2)
+            c.call(f1mPrefix+"_mul", t6, c2, r2),
+            //c.call("debug_mark", c.i32_const(67)),
+            //c.call("debug_log32", r0)
         );
     }
 

@@ -355,9 +355,17 @@ module.exports = function buildF2m(module, mulNonResidueFn, prefix, f1mPrefix) {
         f.addParam("x", "i32");
         f.addParam("r", "i32");
 
+
+
         const c = f.getCodeBuilder();
 
         const x0 = c.getLocal("x");
+
+        //f.addCode(
+        //  c.call("debug_mark", c.i32_const(88)),
+        //  c.call("debug_log32", x0),
+        //);
+
         const x1 = c.i32_add(c.getLocal("x"), c.i32_const(f1n8));
         const r0 = c.getLocal("r");
         const r1 = c.i32_add(c.getLocal("r"), c.i32_const(f1n8));
@@ -379,6 +387,8 @@ module.exports = function buildF2m(module, mulNonResidueFn, prefix, f1mPrefix) {
             c.call(f1mPrefix+"_mul", x0, t3, r0),
             c.call(f1mPrefix+"_mul", x1, t3, r1),
             c.call(f1mPrefix+"_neg", r1, r1),
+            //c.call("debug_mark", c.i32_const(99)),
+            //c.call("debug_log32", r1),
         );
     }
 
@@ -414,6 +424,9 @@ module.exports = function buildF2m(module, mulNonResidueFn, prefix, f1mPrefix) {
     module.exportFunction(prefix + "_toMontgomery");
     module.exportFunction(prefix + "_eq");
     module.exportFunction(prefix + "_inverse");
+    console.log('build_f2m buildExp using base length:', f1n8*2);
+    console.log('build_f2m buildExp using prefix:', prefix);
+    // buildTimesScalar(module, fnName, elementLen, opAB, opAA, opCopy, opInit) {
     buildExp(
         module,
         prefix + "_exp",
@@ -422,6 +435,7 @@ module.exports = function buildF2m(module, mulNonResidueFn, prefix, f1mPrefix) {
         prefix + "_square",
         prefix + "_copy",
         prefix + "_one",
+        //prefix + "_zero",
     );
     module.exportFunction(prefix + "_exp");
     module.exportFunction(prefix + "_timesScalar");

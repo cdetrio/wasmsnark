@@ -776,6 +776,7 @@ module.exports = function buildF1m(module, _q, _prefix, _intPrefix) {
         f.addParam("r", "i32");
 
         const c = f.getCodeBuilder();
+        //f.addCode(c.call("debug_mark", c.i32_const(77)));
         f.addCode(c.call(prefix + "_fromMontgomery", c.getLocal("x"), c.getLocal("r")));
         f.addCode(c.call(intPrefix + "_inverseMod", c.getLocal("r"), c.i32_const(pq), c.getLocal("r")));
         f.addCode(c.call(prefix + "_toMontgomery", c.getLocal("r"), c.getLocal("r")));

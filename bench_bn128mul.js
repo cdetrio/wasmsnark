@@ -84,7 +84,7 @@ async function runBench() {
 
     const pairing1_result_squared = bn128.alloc(n8*12);
     bn128.instance.exports.ftm_mul(pairing1_result, pairing1_result, pairing1_result_squared);
-     console.log('bn128 pairing1 result squared:', bn128.getF12(pairing1_result_squared));
+    console.log('bn128 pairing1 result squared:', bn128.getF12(pairing1_result_squared));
 
     const pairing2_result = bn128.alloc(n8*12);
 

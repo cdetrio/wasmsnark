@@ -6,10 +6,23 @@ const path = require("path");
 
 function buildWasm() {
     const moduleBuilder = new ModuleBuilder();
+
+    console.log('ModuleBuilder prototype:', ModuleBuilder.prototype);
     moduleBuilder.setMemory(1000);
+    debugFunc = moduleBuilder.addIimportFunction("debug_log32", "env", "log32");
+    debugFunc.addParam("c1", "i32");
+
+    debugFunc = moduleBuilder.addIimportFunction("debug_mark", "env", "logmark");
+    debugFunc.addParam("i", "i32");
+
     buildBn128(moduleBuilder);
 
     const code = moduleBuilder.build();
+
+    fs.writeFileSync(
+        path.join( __dirname, "..", "build", "bls12.wasm"),
+        code
+    )
 
     fs.writeFileSync(
         path.join( __dirname, "..", "build", "bls12_wasm.js"),

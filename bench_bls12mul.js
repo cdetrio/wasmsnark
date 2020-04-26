@@ -89,7 +89,7 @@ async function runBench() {
     const scalar_two = bls12.alloc(n8);
     bls12.setF1(scalar_two, "2");
 
-    bls12.instance.exports.g2m_timesScalar(bls12.pG2gen, scalar_two, n8, g2_times_2);
+    bls12.instance.exports.g2m_timesScalar(bls12.pG2gen, scalar_two, 8, g2_times_2);
     //console.log('bls12 g2 times 2 result:', bls12.getG2(g2_times_2));
 
     const g2_times_2_affine = bls12.alloc(n8*3);
@@ -109,6 +109,7 @@ async function runBench() {
     /*** try pairing test ***/
     // try test like https://github.com/ethereum/py_ecc/blob/master/tests/test_bn128_and_bls12_381.py#L315-L319
 
+
     const pairing1_result = bls12.alloc(n8*12);
     bls12.instance.exports.bls12_pairing(bls12.pG1gen, bls12.pG2gen, pairing1_result);
     console.log('bls12 pairing1 result:', bls12.getF12hex(pairing1_result));
@@ -117,18 +118,52 @@ async function runBench() {
     const pairing1_result_squared = bls12.alloc(n8*12);
     bls12.instance.exports.ftm_mul(pairing1_result, pairing1_result, pairing1_result_squared);
 
-    console.log('bls12 pairing1 result squared:', bls12.getF12hex(pairing1_result_squared));
+    console.log('bls12 pairing1 result squared by ftm_mul:', bls12.getF12hex(pairing1_result_squared));
+
+    /*
+    const pairing1_result_squared_by_square = bls12.alloc(n8*12);
+    bls12.instance.exports.ftm_square(pairing1_result, pairing1_result_squared_by_square);
+
+    console.log('bls12 pairing1 result squared by ftm_square:', bls12.getF12hex(pairing1_result_squared_by_square));
+    */
+
+
+
+    /**** pairing2 test ***/
 
 
     const pairing2_result = bls12.alloc(n8*12);
 
-    //bls12.instance.exports.bls12_pairing(g2_times_2, bls12.pG1gen, pairing2_result);
-    bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2_affine, pairing2_result);
+    //bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2, pairing2_result);
+    // g2_times_2_affine doesn't work?!
+    // but g2_times_2 does!
+    bls12.instance.exports.bls12_pairing(bls12.pG1gen, g2_times_2, pairing2_result);
     console.log('bls12 pairing2 result:', bls12.getF12hex(pairing2_result));
 
-    //console.log('bls12 pairing2 result in hex:', bls12.getF12hex(pairing2_result));
+    /*
+    const pRes1 = bls12.alloc(48*12);
+    const pPreP = bls12.alloc(48*3);
+    const pPreQ = bls12.alloc(48*2*3 + 48*2*3*67); // 68 total
+
+    //bls12.instance.exports.bn128_prepareG1(bls12.pG1gen, pPreP);
+    //console.log('bls12 prepareG2 result:', bls12.getF12hex(pPreQ));
+
+    bls12.instance.exports.bls12_prepareG2(bls12.pG2gen, pPreQ);
+    //console.log('bls12 prepareG2 result:', bls12.getF12hex(pPreQ));
 
 
+    bls12.instance.exports.bls12_prepareG1(bls12.pG1gen, pPreP);
+    bls12.instance.exports.bls12_prepareG2(g2_times_2_affine, pPreQ);
+    bls12.instance.exports.bls12_millerLoop(pPreP, pPreQ, pRes1);
+    console.log('pairing result2 done manually pRes1:', bls12.getF12hex(pRes1));
+
+
+    const pRes_squared = bls12.alloc(48*12);
+    bls12.instance.exports.ftm_mul(pRes1, pRes1, pRes_squared);
+    console.log('pRes_squared:', bls12.getF12hex(pRes_squared));
+
+    // ** ftm_mul and ftm_square are giving the same result in wasmsnark and rust (eip1962)
+    */
 
 
 
@@ -221,7 +256,7 @@ async function runBench() {
 
 
     /* ---- trying the mul_by_014 extracted case on mulby014 ---- */
-
+    /*
     const pf12_test1 = bls12.alloc(n8*12);
 
     // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
@@ -262,7 +297,7 @@ async function runBench() {
     bls12.instance.exports.bls12__mulBy014(pEll0_test1, pVW_test1, pVV_test1, pf12_test1);
     //bls12.instance.exports.bls12__mulBy024Old(pEll0, pVW, pVV, pf12);
     console.log('bls12 mulBy014 test1 result:', bls12.getF12hex(pf12_test1));
-
+    */
 
 
 
@@ -271,7 +306,7 @@ async function runBench() {
 
     /* ---- trying another extracted mul_by_014 case on mulby014 ---- */
 
-
+    /*
     // sets pf to [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
     //for (let i=0; i<12; i++) {
     //    bls12.setF1(pf12 + i*n8, i);
@@ -354,7 +389,7 @@ async function runBench() {
     bls12.instance.exports.bls12__mulBy014(pEll0, pVW, pVV, pf12); // VV and VW are reversed here, but it gives better results
     //bls12.instance.exports.bls12__mulBy024Old(pEll0, pVW, pVV, pf12);
     console.log('bls12 mulBy014 test2 result:', bls12.getF12hex(pf12));
-
+    */
     /* -------- */
 
 
@@ -365,6 +400,7 @@ async function runBench() {
 
 
     /***** do pairingEq2 test ****/
+
     const g2_times_27 = bls12.alloc(n8*6);
     const g1_times_37 = bls12.alloc(n8*3);
     const g1_times_999 = bls12.alloc(n8*3);
@@ -389,15 +425,16 @@ async function runBench() {
 
     console.log('bls12.pOneT:', bls12.getF12(bls12.pOneT));
 
-    /*
-    const composit1_result = bls12.alloc(n8*12);
-    bls12.instance.exports.bls12_pairing(g1_times_37, g2_times_27, composit1_result);
-    console.log('composit1_result:', bls12.getF12(composit1_result));
 
-    const composit2_result = bls12.alloc(n8*12);
-    bls12.instance.exports.bl12_pairing(g1_times_999, bn128.pG2gen, composit2_result);
-    console.log('composit2_result:', bls12.getF12(composit2_result));
-    */
+    //const composit1_result = bls12.alloc(n8*12);
+    //bls12.instance.exports.bls12_pairing(g1_times_37, g2_times_27, composit1_result);
+    //console.log('composit1_result:', bls12.getF12(composit1_result));
+
+
+    //const composit2_result = bls12.alloc(n8*12);
+    //bls12.instance.exports.bl12_pairing(g1_times_999, bn128.pG2gen, composit2_result);
+    //console.log('composit2_result:', bls12.getF12(composit2_result));
+ 
 
 
     let pairingEq2_result = bls12.instance.exports.bls12_pairingEq2(g1_times_37, g2_times_27, g1_times_999_neg, bls12.pG2gen, bls12.pOneT);

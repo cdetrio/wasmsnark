@@ -1269,12 +1269,14 @@ module.exports = function buildBN128(module, _prefix) {
 
         const exponent = bigInt("552484233613224096312617126783173147097382103762957654188882734314196910839907541213974502761540629817009608548654680343627701153829446747810907373256841551006201639677726139946029199968412598804882391702273019083653272047566316584365559776493027495458238373902875937659943504873220554161550525926302303331747463515644711876653177129578303191095900909191624817826566688241804408081892785725967931714097716709526092261278071952560171111444072049229123565057483750161460024353346284167282452756217662335528813519139808291170539072125381230815729071544861602750936964829313608137325426383735122175229541155376346436093930287402089517426973178917569713384748081827255472576937471496195752727188261435633271238710131736096299798168852925540549342330775279877006784354801422249722573783561685179618816480037695005515426162362431072245638324744480");
 
-        const pExponent = module.alloc(utils.bigInt2BytesLE( exponent, 352 ));
+        const pExponent = module.alloc(utils.bigInt2BytesLE( exponent, 590 ));
 
         const c = f.getCodeBuilder();
 
+        // the minimum _exp length is 349.  348 and pairingEq2 test doesn't pass. 
+
         f.addCode(
-            c.call(ftmPrefix + "_exp", c.getLocal("x"), c.i32_const(pExponent), c.i32_const(352), c.getLocal("r")),
+            c.call(ftmPrefix + "_exp", c.getLocal("x"), c.i32_const(pExponent), c.i32_const(590), c.getLocal("r")),
         );
     }
 
@@ -1311,7 +1313,7 @@ module.exports = function buildBN128(module, _prefix) {
             f.addCode(c.call(ftmPrefix + "_mul", resT, auxT, resT ));
         }
 
-        f.addCode(c.call(prefix + "_finalExponentiation", resT, resT ));
+        f.addCode(c.call(prefix + "_finalExponentiationOld", resT, resT ));
 
         f.addCode(c.call(ftmPrefix + "_eq", resT, c.getLocal("c")));
     }
@@ -1331,7 +1333,7 @@ module.exports = function buildBN128(module, _prefix) {
         f.addCode(c.call(prefix + "_prepareG1", c.getLocal("p"), c.i32_const(pPreP) ));
         f.addCode(c.call(prefix + "_prepareG2", c.getLocal("q"), c.i32_const(pPreQ) ));
         f.addCode(c.call(prefix + "_millerLoop", c.i32_const(pPreP), c.i32_const(pPreQ), resT ));
-        f.addCode(c.call(prefix + "_finalExponentiation", resT, c.getLocal("r") ));
+        f.addCode(c.call(prefix + "_finalExponentiationOld", resT, c.getLocal("r") ));
     }
 
 

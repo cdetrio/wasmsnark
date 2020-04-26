@@ -1,6 +1,8 @@
 const bigInt = require("big-integer");
 const utils = require("../utils");
 
+const util = require('util');
+
 const buildF1m =require("../build_f1m.js");
 const buildF1 =require("../build_f1.js");
 const buildF2m =require("../build_f2m.js");
@@ -907,6 +909,7 @@ module.exports = function buildBLS12(module, _prefix) {
             c.setLocal("i", c.i32_const(ateLoopBitBytes.length-2)),
             c.block(c.loop(
 
+                c.call("debug_log32", F),
 
                 c.call(ftmPrefix + "_square", F, F),
 
@@ -942,11 +945,22 @@ module.exports = function buildBLS12(module, _prefix) {
 
         );
 
+        f.addCode(
+          c.call("debug_log32", F),
+        );
+
         if (isLoopNegative) {
             f.addCode(
-                c.call(ftmPrefix + "_inverse", F, F),
+                //c.call(ftmPrefix + "_inverse", F, F), // this one does all 12 elements, we only want to do the last 6
+                // c.i32_add(F, c.i32_const(f2size*3))
+                c.call(f6mPrefix + "_neg", c.i32_add(F, c.i32_const(f2size*3)), c.i32_add(F, c.i32_const(f2size*3))) // only do the last 6 elements
             );
         }
+
+        f.addCode(
+          c.call("debug_mark", c.i32_const(123)),
+          c.call("debug_log32", F),
+        );
 
         // corresponds to this in BN??  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bn/mod.rs#L493-L499
         // TODO: no correspondence in BLS  https://github.com/matter-labs/eip1962/blob/master/src/pairings/bls12/mod.rs#L446-L450
@@ -1551,12 +1565,24 @@ module.exports = function buildBLS12(module, _prefix) {
 
         const exponent = bigInt("322277361516934140462891564586510139908379969514828494218366688025288661041104682794998680497580008899973249814104447692778988208376779573819485263026159588510513834876303014016798809919343532899164848730280942609956670917565618115867287399623286813270357901731510188149934363360381614501334086825442271920079363289954510565375378443704372994881406797882676971082200626541916413184642520269678897559532260949334760604962086348898118982248842634379637598665468817769075878555493752214492790122785850202957575200176084204422751485957336465472324810982833638490904279282696134323072515220044451592646885410572234451732790590013479358343841220074174848221722017083597872017638514103174122784843925578370430843522959600095676285723737049438346544753168912974976791528535276317256904336520179281145394686565050419250614107803233314658825463117900250701199181529205942363159325765991819433914303908860460720581408201373164047773794825411011922305820065611121544561808414055302212057471395719432072209245600258134364584636810093520285711072578721435517884103526483832733289802426157301542744476740008494780363354305116978805620671467071400711358839553375340724899735460480144599782014906586543813292157922220645089192130209334926661588737007768565838519456601560804957985667880395221049249803753582637708560");
 
-        const pExponent = module.alloc(utils.bigInt2BytesLE( exponent, 352 ));
+        console.log('exponent as hex:', exponent.toString(16));
+
+        const exp_as_bytes = utils.bigInt2BytesLE( exponent, 540 );
+        console.log('exp_as_bytes length:', exp_as_bytes.length)
+        console.log('exp_as_bytes:', exp_as_bytes.join(", "))
+
+        //let exp_as_bytes_be = utils.bigInt2BytesLE( exponent, 540 );
+        //exp_as_bytes_be.reverse();
+        //console.log('exp_as_bytes_be:', exp_as_bytes_be.join(", "))
+
+
+        const pExponent = module.alloc([...exp_as_bytes]);
 
         const c = f.getCodeBuilder();
 
+        console.log('buildFinalExponentiationOld going to call: ', ftmPrefix + "_exp");
         f.addCode(
-            c.call(ftmPrefix + "_exp", c.getLocal("x"), c.i32_const(pExponent), c.i32_const(352), c.getLocal("r")),
+            c.call(ftmPrefix + "_exp", c.getLocal("x"), c.i32_const(pExponent), c.i32_const(541), c.getLocal("r")),
         );
     }
 
@@ -1614,7 +1640,12 @@ module.exports = function buildBLS12(module, _prefix) {
         f.addCode(c.call(prefix + "_prepareG1", c.getLocal("p"), c.i32_const(pPreP) ));
         f.addCode(c.call(prefix + "_prepareG2", c.getLocal("q"), c.i32_const(pPreQ) ));
         f.addCode(c.call(prefix + "_millerLoop", c.i32_const(pPreP), c.i32_const(pPreQ), resT ));
+        f.addCode(c.call("debug_mark", c.i32_const(321)));
+        f.addCode(c.call("debug_log32", resT ));
         f.addCode(c.call(prefix + "_finalExponentiationOld", resT, c.getLocal("r") ));
+        //f.addCode(c.call(prefix + "_finalExponentiation", resT, c.getLocal("r") ));
+        f.addCode(c.call("debug_mark", c.i32_const(333)));
+        f.addCode(c.call("debug_log32", c.getLocal("r")));
     }
 
 
@@ -1658,6 +1689,17 @@ module.exports = function buildBLS12(module, _prefix) {
     module.exportFunction(prefix + "__mulBy024Old");
     module.exportFunction(prefix + "__cyclotomicSquare");
     module.exportFunction(prefix + "__cyclotomicExp_w0");
+    
+    //console.log('module:', module);
+    //console.dir(module.__proto__, { depth: null });
+    var methods = [];
+for (var m in module) {
+    if (typeof module[m] == "function") {
+        methods.push(m);
+    }
+}
+console.log(methods.join(","));
+    //console.log(Object.getOwnPropertyNames(module))
 
 
 };

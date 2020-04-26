@@ -58,9 +58,21 @@ function thread(self) {
         memory = new WebAssembly.Memory({initial:data.init});
         i32 = new Uint32Array(memory.buffer);
 
+        console.log('instantiating..!!')
+
         instance = await WebAssembly.instantiate(wasmModule, {
             env: {
-                "memory": memory
+                "memory": memory,
+                log32(c1) {
+                  console.log('log32 official')
+                  if (c1<0) c1 = 0x100000000+c1;
+                  let s=c1.toString(16);
+                  while (s.length<8) s = "0"+s;
+                  console.log(s + ": " + c1.toString());
+                },
+                logmark(i) {
+                  console.log("asdf i.");
+                }
             }
         });
     }
@@ -170,6 +182,18 @@ function thread(self) {
     };
 }
 
+
+function log32(c1) {
+    console.log('log32 weird')
+    if (c1<0) c1 = 0x100000000+c1;
+    let s=c1.toString(16);
+    while (s.length<8) s = "0"+s;
+    console.log(s + ": " + c1.toString());
+ }
+
+let debug_count = 0;
+
+
 async function build() {
 
     const bls12 = new Bls12();
@@ -183,11 +207,30 @@ async function build() {
     bls12.memory = new WebAssembly.Memory({initial:5000});
     bls12.i32 = new Uint32Array(bls12.memory.buffer);
 
+    const blsEnv = {
+        "memory": bls12.memory,
+        log32
+    }
+
+    console.log('compiling..')
     const wasmModule = await WebAssembly.compile(bls12_wasm.code);
 
+    console.log('instantiating...')
     bls12.instance = await WebAssembly.instantiate(wasmModule, {
         env: {
-            "memory": bls12.memory
+            "memory": bls12.memory,
+            log32(c1) {
+              //console.log('log32 in buildBls')
+              //if (c1<0) c1 = 0x100000000+c1;
+              //let s=c1.toString(16);
+              //while (s.length<8) s = "0"+s;
+              //console.log(s + ": " + c1.toString());
+              console.log('bls12.getF1hex(c1) i='+debug_count+':', bls12.getF12hex(c1));
+              debug_count = debug_count + 1;
+            },
+            logmark(i) {
+              console.log('logmark i:', i);
+            }
         }
     });
 
