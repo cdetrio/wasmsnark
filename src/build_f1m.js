@@ -438,7 +438,7 @@ module.exports = function buildF1m(module, _q, _prefix, _intPrefix) {
 
     function buildSquare() {
 
-        const f = module.addFunction(prefix+"_square");
+        const f = module.addFunction(prefix+"_squareNew");
         f.addParam("x", "i32");
         f.addParam("r", "i32");
         f.addLocal("c0", "i64");
@@ -737,7 +737,7 @@ module.exports = function buildF1m(module, _q, _prefix, _intPrefix) {
 
 
     function buildSquareOld() {
-        const f = module.addFunction(prefix+"_squareOld");
+        const f = module.addFunction(prefix+"_square");
         f.addParam("x", "i32");
         f.addParam("r", "i32");
 
@@ -1005,8 +1005,8 @@ module.exports = function buildF1m(module, _q, _prefix, _intPrefix) {
     module.exportFunction(prefix + "_isNegative");
     module.exportFunction(prefix + "_mReduct");
     module.exportFunction(prefix + "_mul");
+    module.exportFunction(prefix + "_squareNew");
     module.exportFunction(prefix + "_square");
-    module.exportFunction(prefix + "_squareOld");
     module.exportFunction(prefix + "_fromMontgomery");
     module.exportFunction(prefix + "_toMontgomery");
     module.exportFunction(prefix + "_inverse");
