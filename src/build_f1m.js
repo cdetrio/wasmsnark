@@ -757,16 +757,21 @@ module.exports = function buildF1m(module, _q, _prefix, _intPrefix) {
 
     function buildFromMontgomery() {
 
-        const pAux2 = module.alloc(n8*2);
+        //const pAux2 = module.alloc(n8*2);
+        const one = module.alloc(n8, utils.bigInt2BytesLE(1, n8));
 
         const f = module.addFunction(prefix+"_fromMontgomery");
         f.addParam("x", "i32");
         f.addParam("r", "i32");
 
         const c = f.getCodeBuilder();
-        f.addCode(c.call(intPrefix + "_copy", c.getLocal("x"), c.i32_const(pAux2) ));
-        f.addCode(c.call(intPrefix + "_zero", c.i32_const(pAux2 + n8) ));
-        f.addCode(c.call(prefix+"_mReduct", c.i32_const(pAux2), c.getLocal("r")));
+        // wasmsnark original code
+        //f.addCode(c.call(intPrefix + "_copy", c.getLocal("x"), c.i32_const(pAux2) ));
+        //f.addCode(c.call(intPrefix + "_zero", c.i32_const(pAux2 + n8) ));
+        //f.addCode(c.call(prefix+"_mReduct", c.i32_const(pAux2), c.getLocal("r")));
+
+        // using f1m_mul
+        f.addCode(c.call(prefix+"_mul", c.getLocal("x"), c.i32_const(one), c.getLocal("r")));
     }
 
     function buildInverse() {
